@@ -1,2 +1,4 @@
 *.js
 *.csv
+node_modules
+*.svg

@@ -12,6 +12,7 @@ import { Utils } from "./libs/utils";
 import { sprintf } from "sprintf-js";
 import { Spider } from "./libs/spider";
 import { exec } from "child_process";
+import { LA, MLP } from "./libs/mlp";
 
 /**
  * 便宜上のメイン関数
@@ -78,30 +79,45 @@ function main() {
   const using_features = feature_stats.map(f => f.name);
   const standardized_stats = float_features.map(feature => Stats.derive_feature_stats(feature, items));
 
-  // [ペアプロット]
-  {
-    // [SVGの作成]
-    // [SVGの初期化]
-    const width = 600;
-    const height = 600;
-    const box: Box = {
-      p1: { x: 0, y: 0 },
-      p2: { x: width * float_features.length, y: height * float_features.length },
-    };
-    const dimension = Geometric.formDimensionByBox(box);
-    const svg = new Spider(dimension);
-    Graph.drawPairPlot(svg, { width, height }, items, standardized_stats);
-    const pair_plot_svg = svg.render();
+  const item_vectors = items.map(item => LA.make_vector(using_features.map(f => item.scores[f])));
+  const perceptron = MLP.make(using_features.length, 3, 2);
+  console.log(perceptron);
+  const rs = MLP.forward(perceptron, item_vectors[0]);
+  rs.forEach((r, i) => {
+    console.log(i);
+    LA.print_matrix(LA.transpose(r));
+    if (0 < i) {
+      const layer = perceptron.layers[i - 1];
+      const act = layer.activator.f(r);
+      console.log(i);
+      LA.print_matrix(act);
+    }
+  });
+
+  // // [ペアプロット]
+  // {
+  //   // [SVGの作成]
+  //   // [SVGの初期化]
+  //   const width = 600;
+  //   const height = 600;
+  //   const box: Box = {
+  //     p1: { x: 0, y: 0 },
+  //     p2: { x: width * float_features.length, y: height * float_features.length },
+  //   };
+  //   const dimension = Geometric.formDimensionByBox(box);
+  //   const svg = new Spider(dimension);
+  //   Graph.drawPairPlot(svg, { width, height }, items, standardized_stats);
+  //   const pair_plot_svg = svg.render();
   
-    // [ファイルに書き出す]
-    const out_path = "pair_plot.svg";
-    IO.save(out_path, pair_plot_svg);
-    exec(`open ${out_path}`, (error, strout, strerr) => {
-      if (error) {
-        console.error(strerr);
-      }
-    });
-  }
+  //   // [ファイルに書き出す]
+  //   const out_path = "pair_plot.svg";
+  //   IO.save(out_path, pair_plot_svg);
+  //   exec(`open ${out_path}`, (error, strout, strerr) => {
+  //     if (error) {
+  //       console.error(strerr);
+  //     }
+  //   });
+  // }
 
   // // [定数項の付加]
   // raw_students.forEach(s => s.scores["constant"] = 1);
@@ -207,9 +223,9 @@ function main() {
 try {
   main();
 } catch (e) {
-  if (e instanceof Error) {
-    console.error(`[${e.name}]`, e.message);
-  } else {
+  // if (e instanceof Error) {
+  //   console.error(`[${e.name}]`, e.message);
+  // } else {
     console.error(e);
-  }
+  // }
 }
