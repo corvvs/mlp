@@ -49,37 +49,11 @@ function main() {
   });
 
   // [統計データの計算]
-  const feature_stats_0 = float_features.map(feature => Stats.derive_feature_stats(feature, items));
-  const correlations: FeatureCorrelation[][] = Stats.derive_features_covariances(feature_stats_0, items);
+  const feature_stats = float_features.map(feature => Stats.derive_feature_stats(feature, items));
+  const correlations: FeatureCorrelation[][] = Stats.derive_features_covariances(feature_stats, items);
 
   // // [統計量の出力]
   // Stats.print_stats_for_features(feature_stats_0, correlations);
-
-  // [ペアプロット]
-    // [SVGの初期化]
-    const width = 600;
-    const height = 600;
-    const box: Box = {
-      p1: { x: 0, y: 0 },
-      p2: { x: width * float_features.length, y: height * float_features.length },
-    };
-    const dimension = Geometric.formDimensionByBox(box);
-    
-    const svg = new Spider(dimension);
-  
-    // [SVGの作成]
-    Graph.drawPairPlot(svg, { width, height }, items, feature_stats_0);
-    const pair_plot_svg = svg.render();
-  
-    // [ファイルに書き出す]
-    const out_path = "pair_plot.svg";
-    IO.save(out_path, pair_plot_svg);
-    exec(`open ${out_path}`, (error, strout, strerr) => {
-      if (error) {
-        console.error(strerr);
-      }
-    });
-  
 
   // // [欠損データの補完]
   // for (let i = 0; i < raw_students.length; ++i) {
@@ -99,9 +73,35 @@ function main() {
   //   return Preprocessor.reduce_by_corelation(feature_stats, raw_students);
   // })();
 
-  // // [前処理:標準化]
-  // feature_stats.forEach(stats => Preprocessor.standardize(stats, raw_students));
-  // const using_features = feature_stats.map(f => f.name);
+  // [前処理:標準化]
+  feature_stats.forEach(stats => Preprocessor.standardize(stats, items));
+  const using_features = feature_stats.map(f => f.name);
+  const standardized_stats = float_features.map(feature => Stats.derive_feature_stats(feature, items));
+
+  // [ペアプロット]
+  {
+    // [SVGの作成]
+    // [SVGの初期化]
+    const width = 600;
+    const height = 600;
+    const box: Box = {
+      p1: { x: 0, y: 0 },
+      p2: { x: width * float_features.length, y: height * float_features.length },
+    };
+    const dimension = Geometric.formDimensionByBox(box);
+    const svg = new Spider(dimension);
+    Graph.drawPairPlot(svg, { width, height }, items, standardized_stats);
+    const pair_plot_svg = svg.render();
+  
+    // [ファイルに書き出す]
+    const out_path = "pair_plot.svg";
+    IO.save(out_path, pair_plot_svg);
+    exec(`open ${out_path}`, (error, strout, strerr) => {
+      if (error) {
+        console.error(strerr);
+      }
+    });
+  }
 
   // // [定数項の付加]
   // raw_students.forEach(s => s.scores["constant"] = 1);

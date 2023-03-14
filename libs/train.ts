@@ -12,10 +12,10 @@ export namespace Preprocessor {
    * 生徒データのうち選択した`feature`を標準化する.
    * すなわち平均0, 分散1となるように全体を線形に変換する.
    * @param feature 
-   * @param students 
+   * @param items 
    */
-  export function standardize(stats: FeatureStats, students: StudentRaw[]) {
-    students.forEach(s => {
+  export function standardize(stats: FeatureStats, items: Item[]) {
+    items.forEach(s => {
       const v = s.scores[stats.name];
       if (!_.isFinite(v)) { return; }
       s.scores[stats.name] = (v - stats.mean) / stats.std;
