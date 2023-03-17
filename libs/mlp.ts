@@ -16,7 +16,16 @@ type Matrix = {
   values: number[][];
 };
 
-type VectorActivationFunc = (x: Matrix) => Matrix;
+/**
+ * 余ベクトルを取り余ベクトルを返す形式の活性化関数
+ */
+type VectorActivationFunc = (covector: Matrix) => Matrix;
+
+/**
+ * 余ベクトルを2つ取り余ベクトルを返す形式の損失関数
+ */
+type VectorLossFunc = (actual: Matrix, predicted: Matrix) => Matrix;
+
 
 /**
  * レイヤー
@@ -242,12 +251,41 @@ export namespace MLP {
     const results: Matrix[] = [v];
     for (let i = 1; i < perceptron.layer_count; ++i) {
       const layer = perceptron.layers[i - 1];
+      // 層を進める
+      // z = Wz + b
       const x = LA.prod(layer.weights, v);
       v = LA.add(x, layer.bias);
       results.push(v);
+      // 活性化関数を適用
       v = layer.activator.f(v);
     }
     return results;
+  }
+
+  /**
+   * 各層の出力リストと損失関数から, 各層の重みとバイアスに対する勾配を計算する
+   * @param perceptron パーセプトロン
+   * @param results 各層の出力
+   * @param actual 教師データ
+   * @param loss (1データ)損失関数
+   */
+  export function backward(
+    perceptron: MultiLayeredPerceptron,
+    results: Matrix[],
+    actual: Matrix,
+    loss: VectorLossFunc
+  ) {
+    const layer = perceptron.layers[perceptron.layer_count - 2];
+    const r = _.last(results)!;
+    const predicted = layer.activator.f(r);
+    console.log("[r]");
+    LA.print_matrix(r);
+    console.log("[actual]");
+    LA.print_matrix(actual);
+    console.log("[predicted]");
+    LA.print_matrix(predicted);
+    console.log("[loss]");
+    LA.print_matrix(loss(actual, predicted));
   }
 };
 
@@ -255,61 +293,117 @@ export namespace MLP {
  * 活性化関数
  */
 export namespace Activator {
+
+  function f_tanh(vs: Matrix) {
+    if (vs.w !== 1) {
+      throw new Error("vs is not co-vector");
+    }
+    return {
+      h: vs.h,
+      w: vs.w,
+      values: _.map(_.range(vs.h), i => {
+        const v = vs.values[i][0];
+        return [(1 - Math.exp(-2 * v)) / (1 + Math.exp(-2 * v))];
+      }),
+    };
+  }
+
+  function df_tanh(vs: Matrix) {
+    if (vs.w !== 1) {
+      throw new Error("vs is not co-vector");
+    }
+    const values = _.range(vs.h).map(l => {
+      return _.range(vs.h).map(n => {
+        if (l !== n) { return 0; }
+        const v = vs.values[n][0];
+        return 4 / Math.pow(Math.exp(v) + Math.exp(-v), 2);
+      });
+    });
+    return {
+      h: vs.h,
+      w: vs.h,
+      values,
+    };
+  }
+
   // Matrix は 余ベクトルであること
   export function tanh() {
     return {
-      f: (vs: Matrix) => {
-        if (vs.w !== 1) {
-          throw new Error("vs is not co-vector");
-        }
-        return {
-          h: vs.h,
-          w: vs.w,
-          values: _.map(_.range(vs.h), i => {
-            const v = vs.values[i][0];
-            return [(1 - Math.exp(-2 * v)) / (1 + Math.exp(-2 * v))];
-          }),
-        };
-      },
-      df: (vs: Matrix) => {
-        if (vs.w !== 1) {
-          throw new Error("vs is not co-vector");
-        }
-        return {
-          h: vs.h,
-          w: vs.w,
-          values: _.map(_.range(vs.h), i => {
-            const v = vs[i][0];
-            return [4 / Math.pow(Math.exp(v) + Math.exp(-v), 2)];
-          }),
-        };
-      },
+      f: f_tanh,
+      df: df_tanh,
+    };
+  }
+
+  function f_softmax(vs: Matrix) {
+    if (vs.w !== 1) {
+      throw new Error("vs is not co-vector");
+    }
+    const z = _.range(vs.h).reduce((s,i) => s + Math.exp(vs.values[i][0]), 0);
+    return {
+      h: vs.h,
+      w: vs.w,
+      values: _.map(_.range(vs.h), i => {
+        const v = vs.values[i][0];
+        return [Math.exp(v) / z];
+      }),
+    };
+  }
+
+  function df_softmax(vs: Matrix) {
+    if (vs.w !== 1) {
+      throw new Error("vs is not co-vector");
+    }
+    const fv = f_softmax(vs);
+    const values = _.range(vs.h).map(l => {
+      return _.range(vs.h).map(n => {
+        const delta = l === n ? 1 : 0;
+        return fv[l] * (delta - fv[n]);
+      });
+    });
+    return {
+      h: vs.h,
+      w: vs.h,
+      values,
     };
   }
 
   export function softmax() {
+    // f はベクトル, df は行列
     return {
-      f: (vs: Matrix) => {
-        if (vs.w !== 1) {
-          throw new Error("vs is not co-vector");
-        }
-        const z = _.range(vs.h).reduce((s,i) => s + Math.exp(vs.values[i][0]), 0);
-        return {
-          h: vs.h,
-          w: vs.w,
-          values: _.map(_.range(vs.h), i => {
-            const v = vs.values[i][0];
-            return [Math.exp(v) / z];
-          }),
-        };
-      },
-      df: (vs: Matrix) => {
-        // TODO: 実装する
-        if (vs.w !== 1) {
-          throw new Error("vs is not co-vector");
-        }
-        return vs;
-      },
+      f: f_softmax,
+      df: df_softmax,
+    };
+  }
+};
+
+/**
+ * データ1つに対する損失関数
+ * 入力はすべて余ベクトル
+ */
+export namespace Loss {
+  /**
+   * 交差エントロピー
+   */
+  export function cross_entropy(actual: Matrix, predicted: Matrix): Matrix {
+    if (actual.h !== predicted.h) {
+      throw new Error("actual.h and predicted.h do not match");
+    }
+    if (actual.w !== 1) {
+      throw new Error("actual is not co-vector");
+    }
+    if (predicted.w !== 1) {
+      throw new Error("predicted is not co-vector");
+    }
+    const values = _.range(actual.h).map(i => {
+      const y = actual.values[i][0];
+      const p = predicted.values[i][0];
+      const l = [y * Math.log(p) + (1 - y) * Math.log(1 - p)];
+      return l;
+    });
+    return {
+      h: actual.h,
+      w: actual.w,
+      values,
     };
   }
 };

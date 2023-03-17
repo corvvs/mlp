@@ -12,7 +12,7 @@ import { Utils } from "./libs/utils";
 import { sprintf } from "sprintf-js";
 import { Spider } from "./libs/spider";
 import { exec } from "child_process";
-import { LA, MLP } from "./libs/mlp";
+import { LA, Loss, MLP } from "./libs/mlp";
 
 /**
  * 便宜上のメイン関数
@@ -79,20 +79,34 @@ function main() {
   const using_features = feature_stats.map(f => f.name);
   const standardized_stats = float_features.map(feature => Stats.derive_feature_stats(feature, items));
 
-  const item_vectors = items.map(item => LA.make_vector(using_features.map(f => item.scores[f])));
+  const actual_vectors = items.map(item => {
+    // B: benign
+    const is_good = item.actual === "B" ? 1 : 0;
+    // M: malignant
+    const is_bad = 1 - is_good;
+    const actual = LA.transpose(LA.make_vector([is_good, is_bad]));
+    return {
+      input: LA.make_vector(using_features.map(f => item.scores[f])),
+      actual,
+    };
+  });
   const perceptron = MLP.make(using_features.length, 3, 2);
   console.log(perceptron);
-  const rs = MLP.forward(perceptron, item_vectors[0]);
-  rs.forEach((r, i) => {
-    console.log(i);
-    LA.print_matrix(LA.transpose(r));
-    if (0 < i) {
-      const layer = perceptron.layers[i - 1];
-      const act = layer.activator.f(r);
+  for (let i = 0; i < 1; ++i) {
+    const av = actual_vectors[i];
+    const rs = MLP.forward(perceptron, av.input);
+    rs.forEach((r, i) => {
       console.log(i);
-      LA.print_matrix(act);
-    }
-  });
+      LA.print_matrix(LA.transpose(r));
+      if (0 < i) {
+        const layer = perceptron.layers[i - 1];
+        const act = layer.activator.f(r);
+        console.log(i);
+        LA.print_matrix(act);
+      }
+    });
+    MLP.backward(perceptron, rs, av.actual, Loss.cross_entropy);
+  }
 
   // // [ペアプロット]
   // {
