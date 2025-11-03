@@ -2,15 +2,17 @@
 
 import type { ActivationFunction } from "./af.js";
 
+export type ScaleFactor = {
+  mean: number; // 平均
+  stddev: number; // 標準偏差; stddev == 0 の列は前処理で除かれていることを期待する
+};
+
 // 入力層
 export type InputLayerInfo = {
   size: number; // 層のサイズ
 
-  scaleFactors: ({
-    // 標準化を行った列についての標準化前の統計情報; 標準化を行わなかった列については null
-    mean: number; // 平均
-    stddev: number; // 標準偏差; stddev == 0 の列は前処理で除かれていることを期待する
-  } | null)[];
+  // 標準化を行った列についての標準化前の統計情報; 標準化を行わなかった列については null
+  scaleFactors: (ScaleFactor | null)[];
 };
 
 // 隠れ層および出力層

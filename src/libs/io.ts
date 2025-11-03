@@ -35,3 +35,8 @@ export function writeCSVFile(path: string, rows: string[][]) {
   const data = rows.map((row) => row.join(",") + "\n").join("");
   writeFileSync(path, data, "utf-8");
 }
+
+export function writeJSONFile(path: string, obj: any) {
+  const data = JSON.stringify(obj, null, 2);
+  writeFileSync(path, data, "utf-8");
+}

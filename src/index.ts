@@ -17,6 +17,7 @@ const yargsInstance = yargs(hideBin(process.argv))
     description: "出力ファイルのパス",
     requiresArg: false,
   })
+  // split 向けオプション
   .option("ratio", {
     type: "number",
     description: "分割比率 (train:ratio, test:1-ratio)",
@@ -34,6 +35,7 @@ const yargsInstance = yargs(hideBin(process.argv))
     default: defaultTestDataFilePath,
     requiresArg: false,
   })
+  // train 向けオプション
   .option("out-model", {
     type: "string",
     description: "モデル出力ファイルのパス",
