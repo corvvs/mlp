@@ -4,7 +4,8 @@ build:
 	npx tsc
 
 exec:
-	npm run run
+# 	node dist/index.js preproc --data=data.csv
+	node dist/index.js split
 
 run: build exec
 

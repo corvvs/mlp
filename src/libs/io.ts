@@ -5,10 +5,9 @@ import { readFileSync, writeFileSync } from "fs";
  * @param path
  * @returns
  */
-export function readCSVFile(path: string | undefined) {
-  // パスが指定されている場合はそこから, 指定されていない場合はstdinから読み込む
-  const data = readFileSync(path ?? "dev/stdin", "utf-8");
-  console.log(`データファイル ${path ?? "stdin"} を読み込みました`);
+export function readCSVFile(path: string): string[][] {
+  const data = readFileSync(path, "utf-8");
+  //   console.log(`データファイル ${path ?? "stdin"} を読み込みました`);
 
   // dataを見出しなしのCSVと考え, パースする
   const rows = data
@@ -20,9 +19,7 @@ export function readCSVFile(path: string | undefined) {
   if (rows.length === 0) {
     throw new Error("データファイルが空です");
   }
-  console.log(`データファイルの行数: ${rows.length}`);
   const numCols = rows[0].length;
-  console.log(`データファイルの列数: ${numCols}`);
   for (let i = 0; i < rows.length; i++) {
     if (rows[i].length !== numCols) {
       throw new Error(
@@ -35,6 +32,6 @@ export function readCSVFile(path: string | undefined) {
 }
 
 export function writeCSVFile(path: string, rows: string[][]) {
-  const data = rows.map((row) => row.join(",")).join("\n");
+  const data = rows.map((row) => row.join(",") + "\n").join("");
   writeFileSync(path, data, "utf-8");
 }
