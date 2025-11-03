@@ -1,5 +1,10 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import {
+  defaultModelFilePath,
+  defaultTestDataFilePath,
+  defaultTrainDataFilePath,
+} from "./constants.js";
 
 const yargsInstance = yargs(hideBin(process.argv))
   .scriptName("mlp")
@@ -20,13 +25,19 @@ const yargsInstance = yargs(hideBin(process.argv))
   .option("out-train", {
     type: "string",
     description: "訓練データ出力ファイルのパス",
-    default: "train_data.csv",
+    default: defaultTrainDataFilePath,
     requiresArg: false,
   })
   .option("out-test", {
     type: "string",
     description: "テストデータ出力ファイルのパス",
-    default: "test_data.csv",
+    default: defaultTestDataFilePath,
+    requiresArg: false,
+  })
+  .option("out-model", {
+    type: "string",
+    description: "モデル出力ファイルのパス",
+    default: defaultModelFilePath,
     requiresArg: false,
   })
   .command(
@@ -61,12 +72,34 @@ const yargsInstance = yargs(hideBin(process.argv))
     () => {},
     async (argv) => {
       const { command } = await import("./commands/split.js");
-      command({
-        dataFilePath: argv.data,
-        ratio: argv.ratio,
-        outTrainDataFilePath: argv.outTrain,
-        outTestDataFilePath: argv.outTest,
-      });
+      try {
+        command({
+          dataFilePath: argv.data,
+          ratio: argv.ratio,
+          outTrainDataFilePath: argv.outTrain,
+          outTestDataFilePath: argv.outTest,
+        });
+      } catch (err) {
+        console.error("データ分割中にエラーが発生しました:", err);
+        process.exit(1);
+      }
+    }
+  )
+  .command(
+    "train",
+    "モデルの訓練を実行します",
+    () => {},
+    async (argv) => {
+      const { command } = await import("./commands/train.js");
+      try {
+        command({
+          dataFilePath: argv.data ?? defaultTrainDataFilePath,
+          modelOutFilePath: argv.outModel,
+        });
+      } catch (err) {
+        console.error("モデル訓練中にエラーが発生しました:", err);
+        process.exit(1);
+      }
     }
   )
   .command(

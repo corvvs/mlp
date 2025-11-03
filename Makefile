@@ -5,7 +5,8 @@ build:
 
 exec:
 # 	node dist/index.js preproc --data=data.csv
-	node dist/index.js split
+# 	node dist/index.js split
+	node dist/index.js train
 
 run: build exec
 
