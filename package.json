@@ -1,0 +1,22 @@
+{
+  "name": "mlp",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "repository": "git@github.com:corvvs/mlp.git",
+  "author": "yokawada",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "run": "node dist/index.js preproc --data=data.csv"
+  },
+  "dependencies": {
+    "typescript": "^5.9.3",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/yargs": "^17.0.34"
+  }
+}
