@@ -7,6 +7,11 @@ const yargsInstance = yargs(hideBin(process.argv))
     type: "string",
     description: "データファイルのパス",
   })
+  .option("out", {
+    type: "string",
+    description: "出力ファイルのパス",
+    requiresArg: false,
+  })
   .command(
     "help",
     "Show help message",
@@ -20,10 +25,17 @@ const yargsInstance = yargs(hideBin(process.argv))
     "前処理を実行します",
     () => {},
     async (argv) => {
+      console.log(argv);
       const { command } = await import("./commands/preproc.js");
-      command({
-        dataFilePath: argv.data,
-      });
+      try {
+        command({
+          dataFilePath: argv.data,
+          outFilePath: argv.out,
+        });
+      } catch (err) {
+        console.error("前処理中にエラーが発生しました:", err);
+        process.exit(1);
+      }
     }
   )
   .command(

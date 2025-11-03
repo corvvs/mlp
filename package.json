@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "run": "node dist/index.js help a b --c -d -f=e"
+    "run": "node dist/index.js preproc --data=data.csv"
   },
   "dependencies": {
     "typescript": "^5.9.3",
