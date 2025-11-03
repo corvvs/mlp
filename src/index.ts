@@ -12,6 +12,23 @@ const yargsInstance = yargs(hideBin(process.argv))
     description: "出力ファイルのパス",
     requiresArg: false,
   })
+  .option("ratio", {
+    type: "number",
+    description: "分割比率 (train:ratio, test:1-ratio)",
+    default: 0.8,
+  })
+  .option("out-train", {
+    type: "string",
+    description: "訓練データ出力ファイルのパス",
+    default: "train_data.csv",
+    requiresArg: false,
+  })
+  .option("out-test", {
+    type: "string",
+    description: "テストデータ出力ファイルのパス",
+    default: "test_data.csv",
+    requiresArg: false,
+  })
   .command(
     "help",
     "Show help message",
@@ -44,7 +61,12 @@ const yargsInstance = yargs(hideBin(process.argv))
     () => {},
     async (argv) => {
       const { command } = await import("./commands/split.js");
-      command();
+      command({
+        dataFilePath: argv.data,
+        ratio: argv.ratio,
+        outTrainDataFilePath: argv.outTrain,
+        outTestDataFilePath: argv.outTest,
+      });
     }
   )
   .command(

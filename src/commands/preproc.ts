@@ -56,11 +56,9 @@ export function command(props: {
   outFilePath: string | undefined;
 }) {
   console.log("前処理を開始しました");
-  const csvRows = readCSVFile(props.dataFilePath);
-  console.log(
-    `データファイル ${props.dataFilePath ?? "stdin"} を読み込みました`,
-    csvRows.length
-  );
+  const dataFilePath = props.dataFilePath ?? "stdin";
+  const csvRows = readCSVFile(dataFilePath);
+  console.log(`データファイル ${dataFilePath} を読み込みました`);
   const preprocRows = execPreproc(csvRows);
   console.log("前処理を完了しました", preprocRows.length);
 
