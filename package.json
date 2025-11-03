@@ -1,0 +1,15 @@
+{
+  "name": "mlp",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "repository": "git@github.com:corvvs/mlp.git",
+  "author": "yokawada",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "typescript": "^5.9.3"
+  }
+}
