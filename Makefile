@@ -4,7 +4,9 @@ build:
 	npx tsc
 
 exec:
-	node dist/index.js
+	npm run run
+
+run: build exec
 
 clean:
 	rm -rf dist

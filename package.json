@@ -5,11 +5,18 @@
   "repository": "git@github.com:corvvs/mlp.git",
   "author": "yokawada",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "run": "node dist/index.js help a b --c -d -f=e"
   },
   "dependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/yargs": "^17.0.34"
   }
 }
