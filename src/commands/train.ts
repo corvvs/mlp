@@ -5,6 +5,8 @@ import type { ModelData } from "../types/model.js";
 import { initializeParams } from "../libs/train/initialization.js";
 import type { Init } from "v8";
 import type { InitializationMethod } from "../types/initialization.js";
+import { getActivationFunctionActual, softmax } from "../libs/train/af.js";
+import { getLossFunctionActual } from "../libs/train/loss.js";
 
 function standardizeData(data: string[][]): {
   rows: number[][];
@@ -89,14 +91,19 @@ function buildModelData(props: {
     method: "Xavier",
     dist: "uniform",
   };
+
+  const actualInputSize = props.scaleFactors.length - 1; // Answer列を除く
+
   const layers: LayerInfo[] = [
     {
       // 入力層
-      size: props.scaleFactors.length,
+      layerType: "input",
+      size: actualInputSize,
       scaleFactors: props.scaleFactors,
     },
     {
       // 出力層
+      layerType: "output",
       size: 2,
       activationFunction: {
         method: "softmax",
@@ -176,4 +183,86 @@ export function command(props: {
 
   // とりあえず書き出してみる
   writeJSONFile("debug.json", model);
+
+  const inputVectors = standardizedResult.rows;
+  const actualLossFunction = getLossFunctionActual(model.lossFunction);
+
+  // とりあえず1エポック, バッチサイズ0(=全データ)でやってみる
+
+  // 順伝播
+  let aMat: number[][] = inputVectors.map((row) => row.slice(1));
+  const zMats: number[][][] = [];
+  for (let i = 1; i <= 1; i++) {
+    const prevLayer = model.layers[i - 1];
+    const currLayer = model.layers[i];
+    console.log(
+      `層 ${i} の順伝播を開始します: ${prevLayer.size} -> ${currLayer.size}`
+    );
+    const w = model.parameters[i - 1].weights;
+    const b = model.parameters[i - 1].biases;
+
+    // 内部チェック
+    const ww = w[0].length;
+    const ah = aMat[0].length;
+    if (ww !== ah) {
+      throw new Error(
+        `重み行列のサイズと前層の出力サイズが一致しません: weights=${ww}, a=${ah}`
+      );
+    }
+    const wh = w.length;
+    const bh = b.length;
+    if (wh !== bh) {
+      throw new Error(
+        `重み行列のサイズとバイアスのサイズが一致しません: weights=${wh}, biases=${bh}`
+      );
+    }
+
+    // 活性化前出力の計算
+    const zMat = aMat.map((a, k) =>
+      w.map(
+        (wRow, i) =>
+          wRow
+            .map((wij, j) => wij * a[j])
+            .sort()
+            .reduce((sum, val) => sum + val, 0) + b[i]
+      )
+    );
+    zMats.push(zMat);
+    console.log(`層 ${i} の活性化前出力が計算されました`, zMat);
+
+    // 活性化後出力の計算
+    switch (currLayer.layerType) {
+      case "output": {
+        // 出力層: softmax
+        const aMatNext = zMat.map(softmax);
+        aMat = aMatNext;
+        break;
+      }
+      case "hidden": {
+        // 隠れ層: 指定された活性化関数
+        const afActual = getActivationFunctionActual(
+          currLayer.activationFunction
+        );
+        const aMatNext = zMat.map((zRow, k) => zRow.map(afActual));
+        aMat = aMatNext;
+        break;
+      }
+      default:
+        throw new Error(`未知の層タイプ: ${(currLayer as any).layerType}`);
+    }
+    console.log(`層 ${i} の順伝播が完了しました`, aMat);
+  }
+
+  // 学習誤差の計算
+  inputVectors.map((inputVector, k) => {
+    const outVector = aMat[k];
+    const yTrue = inputVector[0];
+    const yPred = outVector[0]; // 正解ラベル1に対応する出力
+
+    // 損失の計算
+    const loss = actualLossFunction(yTrue, yPred);
+    console.log(`${k}: 損失: ${loss}`);
+  });
+
+  console.log("訓練が完了しました");
 }

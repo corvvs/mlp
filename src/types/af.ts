@@ -20,9 +20,12 @@ export type AFLeakyReLU = {
   alpha: number;
 };
 
-export type ActivationFunction =
-  | AFSoftmax
+export type ActivationFunctionSingleArgument =
   | AFSigmoid
   | AFTanH
   | AFReLU
   | AFLeakyReLU;
+
+export type ActivationFunction = AFSoftmax | ActivationFunctionSingleArgument;
+
+export type ActivatationFunctionActual = (x: number) => number;
