@@ -1,3 +1,4 @@
+import { defaultPreprocDataFilePath } from "../constants.js";
 import { readCSVFile, writeCSVFile } from "../libs/io.js";
 
 const colIndexID = 0; // ID列のインデックス
@@ -62,7 +63,7 @@ export function command(props: {
   const preprocRows = execPreproc(csvRows);
   console.log("前処理を完了しました", preprocRows.length);
 
-  const outFilePath = props.outFilePath ?? "preproc_data.csv";
+  const outFilePath = props.outFilePath ?? defaultPreprocDataFilePath;
   writeCSVFile(outFilePath, preprocRows);
   console.log(`前処理済みデータを ${outFilePath} に出力しました`);
 }

@@ -1,6 +1,7 @@
 import { sprintf } from "sprintf-js";
 import { readCSVFile, writeCSVFile } from "../libs/io.js";
 import { getShuffledPermutation } from "../libs/random.js";
+import { defaultPreprocDataFilePath } from "../constants.js";
 
 export function command(props: {
   dataFilePath: string | undefined;
@@ -8,7 +9,7 @@ export function command(props: {
   outTrainDataFilePath: string;
   outTestDataFilePath: string;
 }) {
-  const actualDataFilePath = props.dataFilePath ?? "preproc_data.csv";
+  const actualDataFilePath = props.dataFilePath ?? defaultPreprocDataFilePath;
   const rows = readCSVFile(actualDataFilePath);
   console.log(`データファイル ${actualDataFilePath} を読み込みました`);
 
