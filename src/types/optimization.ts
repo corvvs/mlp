@@ -10,12 +10,6 @@ export type OptMomentumSGD = {
   alpha: number;
 };
 
-export type OptNAG = {
-  method: "NAG";
-  learningRate: number;
-  alpha: number;
-};
-
 export type OptAdaGrad = {
   method: "AdaGrad";
   learningRate: number;
@@ -40,7 +34,24 @@ export type OptAdam = {
 export type OptimizationMethod =
   | OptSGD
   | OptMomentumSGD
-  | OptNAG
   | OptAdaGrad
   | OptRMSProp
   | OptAdam;
+
+export type PartialOptSGD = Pick<OptSGD, "method"> &
+  Partial<Omit<OptSGD, "method">>;
+export type PartialOptMomentumSGD = Pick<OptMomentumSGD, "method"> &
+  Partial<Omit<OptMomentumSGD, "method">>;
+export type PartialOptAdaGrad = Pick<OptAdaGrad, "method"> &
+  Partial<Omit<OptAdaGrad, "method">>;
+export type PartialOptRMSProp = Pick<OptRMSProp, "method"> &
+  Partial<Omit<OptRMSProp, "method">>;
+export type PartialOptAdam = Pick<OptAdam, "method"> &
+  Partial<Omit<OptAdam, "method">>;
+
+export type OptimizationMethodParam =
+  | PartialOptSGD
+  | PartialOptMomentumSGD
+  | PartialOptAdaGrad
+  | PartialOptRMSProp
+  | PartialOptAdam;
