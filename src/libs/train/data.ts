@@ -69,3 +69,33 @@ export function standardizeData(data: string[][]): {
     ),
   };
 }
+
+export function applyStandardization(
+  data: string[][],
+  scaleFactors: (ScaleFactor | null)[]
+): number[][] {
+  const width = data[0].length;
+  return data.map((rawRow, i) => {
+    const row: number[] = [];
+    for (let j = 0; j < width; j++) {
+      const rawVal = rawRow[j];
+      const val = parseFloat(rawVal);
+      if (!isFinite(val)) {
+        throw new Error(`数値変換エラー at (${i}, ${j}): ${rawVal}`);
+      }
+      const sf = scaleFactors[j];
+      if (sf === null) {
+        // 標準化しない列
+        row.push(val);
+        continue;
+      }
+      const { mean, stddev } = sf;
+      if (stddev > 0) {
+        row.push((val - mean) / stddev);
+      } else {
+        row.push(val - mean);
+      }
+    }
+    return row;
+  });
+}

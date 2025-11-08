@@ -1,12 +1,13 @@
 import { sprintf } from "sprintf-js";
 import { readCSVFile, writeCSVFile, writeJSONFile } from "../libs/io.js";
-import { getLossFunctionActual } from "../libs/train/loss.js";
+import { getLoss, getLossFunctionActual } from "../libs/train/loss.js";
 import { getOptimizationFunctionActual } from "../libs/train/optimization.js";
 import { printModel } from "../libs/print/model.js";
-import { standardizeData } from "../libs/train/data.js";
+import { applyStandardization, standardizeData } from "../libs/train/data.js";
 import { buildModelData } from "../libs/train/model.js";
 import { forwardPass } from "../libs/train/forward.js";
 import { backwardPass } from "../libs/train/backward.js";
+import { splitData } from "../libs/split.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -17,15 +18,24 @@ export function command(props: {
   // データファイルの読み取り
   const dataFilePath = props.dataFilePath;
   const csvRows = readCSVFile(dataFilePath);
+  const { trainData: trainDataRaw, testData: testDataRaw } = splitData(
+    csvRows,
+    0.8
+  );
 
   // 前処理: Answer列以外の標準化
   console.log("Standardizing Input...");
-  const standardizedResult = standardizeData(csvRows);
+  const standardizedResult = standardizeData(trainDataRaw);
+  const trainData = standardizedResult.rows;
+  const testData = applyStandardization(
+    testDataRaw,
+    standardizedResult.scaleFactors
+  );
 
   // デバッグ用: 標準化後のデータをファイルに書き出す
   writeCSVFile(
     "debug.csv",
-    standardizedResult.rows.map((row) => row.map((v) => sprintf("%1.4f", v)))
+    trainData.map((row) => row.map((v) => sprintf("%1.4f", v)))
   );
 
   // 初期モデルの構築
@@ -39,9 +49,7 @@ export function command(props: {
   // とりあえず書き出してみる
   writeJSONFile("debug.json", model);
 
-  const inputVectors = standardizedResult.rows;
   const actualLossFunction = getLossFunctionActual(model.lossFunction);
-  const B = inputVectors.length;
   const actualOptimizationFunction = getOptimizationFunctionActual(
     model.optimization,
     model.layers
@@ -49,45 +57,61 @@ export function command(props: {
 
   // とりあえず1エポック, バッチサイズ0(=全データ)でやってみる
   const maxEpochs = 1000;
-  let last_loss: number = Infinity;
+  let lastTrainLoss: number = Infinity;
+  let lastTestLoss: number = Infinity;
   for (let epoch = 0; epoch < maxEpochs; epoch++) {
+    // 学習
     // 順伝播
-    const { aMats, zMats } = forwardPass({ inputVectors, model });
+    const B = trainData.length;
+    const { aMats: aMatsTrain, zMats: zMatsTrain } = forwardPass({
+      inputVectors: trainData,
+      model,
+    });
 
     // 学習誤差の計算
-    let meanLoss = 0;
-    inputVectors.map((inputVector, k) => {
-      const outVector = aMats[aMats.length - 1][k];
-      const yTrue = inputVector[0];
-      const yPred = outVector[0]; // 正解ラベル1に対応する出力
-
-      // 損失の計算
-      const loss = actualLossFunction(yTrue, yPred);
-      meanLoss += loss;
+    const trainLoss = getLoss({
+      inputVectors: trainData,
+      outputMat: aMatsTrain[aMatsTrain.length - 1],
+      lossFunction: actualLossFunction,
     });
-    meanLoss /= B;
 
-    const lossDiff = Math.abs(meanLoss - last_loss);
-    last_loss = meanLoss;
-    console.log(
-      sprintf(
-        "Epoch %4d / %4d: Loss = %1.6f (Diff = %1.6f)",
-        epoch + 1,
-        maxEpochs,
-        meanLoss,
-        lossDiff
-      )
-    );
+    const trainLossDiff = trainLoss - lastTrainLoss;
+    lastTrainLoss = trainLoss;
 
     // 逆伝播
     backwardPass({
-      inputVectors,
+      inputVectors: trainData,
       model,
       B,
-      aMats,
-      zMats,
+      aMats: aMatsTrain,
+      zMats: zMatsTrain,
       actualOptimizationFunction,
     });
+
+    // 評価
+    const { aMats: aMatsTest } = forwardPass({
+      inputVectors: testData,
+      model,
+    });
+    const testLoss = getLoss({
+      inputVectors: testData,
+      outputMat: aMatsTest[aMatsTest.length - 1],
+      lossFunction: actualLossFunction,
+    });
+    const testLossDiff = testLoss - lastTestLoss;
+    lastTestLoss = testLoss;
+
+    console.log(
+      sprintf(
+        "Epoch %4d / %4d: Loss = %1.6f(Diff = %+1.6f), Test Loss = %1.6f(Diff = %+1.6f)",
+        epoch + 1,
+        maxEpochs,
+        trainLoss,
+        trainLossDiff,
+        testLoss,
+        testLossDiff
+      )
+    );
   }
 
   console.log("訓練が完了しました");

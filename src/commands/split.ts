@@ -2,6 +2,7 @@ import { sprintf } from "sprintf-js";
 import { readCSVFile, writeCSVFile } from "../libs/io.js";
 import { getShuffledPermutation } from "../libs/random.js";
 import { defaultPreprocDataFilePath } from "../constants.js";
+import { splitData } from "../libs/split.js";
 
 export function command(props: {
   dataFilePath: string | undefined;
@@ -14,18 +15,7 @@ export function command(props: {
   console.log(`データファイル ${actualDataFilePath} を読み込みました`);
 
   // rows を train と test に ratio : (1 - ratio) の比率で分割する
-  const numRows = rows.length;
-  const shuffledIndices = getShuffledPermutation(numRows);
-  const numTrain = Math.floor(numRows * props.ratio);
-  const trainRows: string[][] = [];
-  const testRows: string[][] = [];
-  for (let i = 0; i < numRows; i++) {
-    if (i < numTrain) {
-      trainRows.push(rows[shuffledIndices[i]]);
-    } else {
-      testRows.push(rows[shuffledIndices[i]]);
-    }
-  }
+  const { trainData, testData } = splitData(rows, props.ratio);
 
   console.log(
     sprintf(
@@ -34,12 +24,12 @@ export function command(props: {
       1 - props.ratio
     )
   );
-  console.log(`訓練データの行数: ${trainRows.length}`);
-  console.log(`テストデータの行数: ${testRows.length}`);
+  console.log(`訓練データの行数: ${trainData.length}`);
+  console.log(`テストデータの行数: ${testData.length}`);
 
   // 分割したデータをファイルに書き出す
-  writeCSVFile(props.outTrainDataFilePath, trainRows);
+  writeCSVFile(props.outTrainDataFilePath, trainData);
   console.log(`訓練データを ${props.outTrainDataFilePath} に書き出しました`);
-  writeCSVFile(props.outTestDataFilePath, testRows);
+  writeCSVFile(props.outTestDataFilePath, testData);
   console.log(`テストデータを ${props.outTestDataFilePath} に書き出しました`);
 }

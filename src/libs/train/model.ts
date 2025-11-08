@@ -71,7 +71,7 @@ export function buildModelData(props: {
     },
 
     optimization: makeOptimizationParam({
-      method: "RMSProp",
+      method: "Adam",
     }),
 
     parameters,
