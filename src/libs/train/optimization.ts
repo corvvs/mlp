@@ -24,7 +24,7 @@ import {
   zeroVec,
 } from "../arithmetics.js";
 
-type OpzimizationFunction = (
+export type OpzimizationFunction = (
   W: number[][],
   b: number[],
   dW: number[][],
@@ -131,7 +131,6 @@ function getActualMomentumSGD(
     db: number[],
     k: number
   ) => {
-    console.log(`Momentum SGDによるパラメータ更新: ${k}`);
     const vw = vws[k];
     const vb = vbs[k];
 

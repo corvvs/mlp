@@ -70,6 +70,9 @@ export function initializeParams(props: {
   layers: LayerInfo[];
   initialization: InitializationMethod;
 }) {
+  console.log(
+    `Initializing parameters with method: ${props.initialization.method}...`
+  );
   const params: LayerParameter[] = [];
   for (let i = 1; i < props.layers.length; i++) {
     const layerPrev = props.layers[i - 1];
@@ -79,8 +82,5 @@ export function initializeParams(props: {
     const param = initParams(fanIn, fanOut, props.initialization);
     params.push(param);
   }
-  console.debug(
-    `パラメータ初期化が完了しました: ${props.initialization.method}, プロジェクション数: ${params.length}`
-  );
   return params;
 }
