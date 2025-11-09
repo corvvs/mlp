@@ -1,5 +1,7 @@
 import type { ModelData } from "../../types/model.js";
+import type { RegularizationGradientFunction } from "../../types/regularization.js";
 import {
+  addMatX,
   hadamardVector,
   mulTMatMat,
   mulTMatVec,
@@ -15,9 +17,17 @@ export function backwardPass(props: {
   aMats: number[][][];
   zMats: number[][][];
   actualOptimizationFunction: OpzimizationFunction;
+  actualRegularizationGradientFunction: RegularizationGradientFunction | null;
 }) {
-  const { inputVectors, model, B, aMats, zMats, actualOptimizationFunction } =
-    props;
+  const {
+    inputVectors,
+    model,
+    B,
+    aMats,
+    zMats,
+    actualOptimizationFunction,
+    actualRegularizationGradientFunction,
+  } = props;
   // 逆伝播
   const dMats: number[][][] = model.layers.map(() => null as any); // NOTE: dMats[0] は使わない
   for (let k = model.layers.length - 1; k >= 1; k--) {
@@ -64,6 +74,7 @@ export function backwardPass(props: {
 
     // パラメータの誤差ベクトルを計算
     // console.log(`パラメータの誤差ベクトルを計算します: ${k}`);
+    const w = model.parameters[k - 1].weights;
     const prevLayer = model.layers[k - 1];
     const dW: number[][] = Array.from({ length: currLayer.size }, () =>
       Array(prevLayer.size).fill(0)
@@ -73,10 +84,11 @@ export function backwardPass(props: {
     const dMat = dMats[k];
     dMat.map((dVec, l) => {
       // 重みの誤差行列
-      const dWMat = mulTMatMat([dVec], [aMatPrev[l]]);
-      // console.log(
-      //   `dVec: (${dVec.length}), dWMat: (${dWMat.length}, ${dWMat[0].length})`
-      // );
+      let dWMat = mulTMatMat([dVec], [aMatPrev[l]]);
+      if (actualRegularizationGradientFunction) {
+        addMatX(dWMat, actualRegularizationGradientFunction(w, B));
+      }
+
       const dBMat = dVec;
       for (let i = 0; i < currLayer.size; i++) {
         for (let j = 0; j < prevLayer.size; j++) {
@@ -93,7 +105,6 @@ export function backwardPass(props: {
       dB[i] /= B;
     }
 
-    const w = model.parameters[k - 1].weights;
     const b = model.parameters[k - 1].biases;
     // console.log(`層 ${k} のパラメータ更新を行います`);
     actualOptimizationFunction(w, b, dW, dB, k - 1);

@@ -24,25 +24,19 @@ export function buildModelData(props: {
     // 隠れ層
     {
       layerType: "hidden",
-      size: 24,
+      size: 80,
       activationFunction: {
         method: "ReLU",
       },
     },
     {
       layerType: "hidden",
-      size: 24,
+      size: 20,
       activationFunction: {
         method: "ReLU",
       },
     },
-    {
-      layerType: "hidden",
-      size: 24,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
+
     {
       // 出力層
       layerType: "output",
@@ -73,6 +67,11 @@ export function buildModelData(props: {
     optimization: makeOptimizationParam({
       method: "Adam",
     }),
+
+    regularization: {
+      method: "L2",
+      lambda: 1e-4,
+    },
 
     parameters,
   };

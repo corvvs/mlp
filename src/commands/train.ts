@@ -8,6 +8,10 @@ import { buildModelData } from "../libs/train/model.js";
 import { forwardPass } from "../libs/train/forward.js";
 import { backwardPass } from "../libs/train/backward.js";
 import { splitData } from "../libs/split.js";
+import {
+  getRegularizationFunctionActual,
+  getRegularizationGradientFunctionActual,
+} from "../libs/train/regularization.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -54,9 +58,14 @@ export function command(props: {
     model.optimization,
     model.layers
   );
+  const actualRegularizationFunction = getRegularizationFunctionActual(
+    model.regularization
+  );
+  const actualRegularizationGradientFunction =
+    getRegularizationGradientFunctionActual(model.regularization);
 
   // とりあえず1エポック, バッチサイズ0(=全データ)でやってみる
-  const maxEpochs = 1000;
+  const maxEpochs = 5000;
   let lastTrainLoss: number = Infinity;
   let lastTestLoss: number = Infinity;
   for (let epoch = 0; epoch < maxEpochs; epoch++) {
@@ -72,7 +81,9 @@ export function command(props: {
     const trainLoss = getLoss({
       inputVectors: trainData,
       outputMat: aMatsTrain[aMatsTrain.length - 1],
+      wMats: model.parameters.map((p) => p.weights),
       lossFunction: actualLossFunction,
+      regularizationFunction: actualRegularizationFunction,
     });
 
     const trainLossDiff = trainLoss - lastTrainLoss;
@@ -86,6 +97,7 @@ export function command(props: {
       aMats: aMatsTrain,
       zMats: zMatsTrain,
       actualOptimizationFunction,
+      actualRegularizationGradientFunction,
     });
 
     // 評価
@@ -96,7 +108,9 @@ export function command(props: {
     const testLoss = getLoss({
       inputVectors: testData,
       outputMat: aMatsTest[aMatsTest.length - 1],
+      wMats: [],
       lossFunction: actualLossFunction,
+      regularizationFunction: null,
     });
     const testLossDiff = testLoss - lastTestLoss;
     lastTestLoss = testLoss;

@@ -1,4 +1,5 @@
 import type { LossFunction, LossFunctionActual } from "../../types/loss.js";
+import type { RegularizationFunction } from "../../types/regularization.js";
 
 export function getLossFunctionActual(
   lossFunction: LossFunction
@@ -19,17 +20,28 @@ export function getLossFunctionActual(
 export function getLoss(props: {
   inputVectors: number[][];
   outputMat: number[][];
+  wMats: number[][][];
   lossFunction: LossFunctionActual;
+  regularizationFunction: RegularizationFunction | null;
 }) {
   let meanLoss = 0;
-  const { inputVectors, outputMat, lossFunction } = props;
+  const {
+    inputVectors,
+    outputMat,
+    lossFunction,
+    wMats,
+    regularizationFunction,
+  } = props;
+  const regularizationContribution = regularizationFunction
+    ? regularizationFunction(wMats)
+    : 0;
   inputVectors.map((inputVector, k) => {
     const outVector = outputMat[k];
     const yTrue = inputVector[0];
     const yPred = outVector[0]; // 正解ラベル1に対応する出力
 
     // 損失の計算
-    const loss = lossFunction(yTrue, yPred);
+    const loss = lossFunction(yTrue, yPred) + regularizationContribution;
     meanLoss += loss;
   });
   meanLoss /= inputVectors.length;
