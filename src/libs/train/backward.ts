@@ -91,8 +91,10 @@ export function backwardPass(props: {
 
       const dBMat = dVec;
       for (let i = 0; i < currLayer.size; i++) {
+        const dWi = dW[i];
+        const dWMati = dWMat[i];
         for (let j = 0; j < prevLayer.size; j++) {
-          dW[i][j] += dWMat[i][j];
+          dWi[j] += dWMati[j];
         }
         dB[i] += dBMat[i];
       }

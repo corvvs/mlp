@@ -18,8 +18,9 @@ export function getRegularizationFunctionActual(
         for (let k = 0; k < wMats.length; k++) {
           const wMat = wMats[k];
           for (let i = 0; i < wMat.length; i++) {
-            for (let j = 0; j < wMat[i].length; j++) {
-              sumSq += wMat[i][j] * wMat[i][j];
+            const wMati = wMat[i];
+            for (let j = 0; j < wMati.length; j++) {
+              sumSq += wMati[j] * wMati[j];
             }
           }
         }

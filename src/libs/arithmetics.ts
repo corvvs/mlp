@@ -50,11 +50,9 @@ export function mulMatrix(a: number[][], b: number[][]): number[][] {
   const result: number[][] = [];
   for (let i = 0; i < a.length; i++) {
     const row: number[] = [];
+    const ai = a[i];
     for (let j = 0; j < b[0].length; j++) {
-      let sum = 0;
-      for (let k = 0; k < a[0].length; k++) {
-        sum += a[i][k] * b[k][j];
-      }
+      const sum = sumNumArray(ai.map((aik, k) => aik * b[k][j]));
       row.push(sum);
     }
     result.push(row);
@@ -68,11 +66,8 @@ export function mulMatVec(mat: number[][], vec: number[]): number[] {
   }
   const result: number[] = [];
   for (let i = 0; i < mat.length; i++) {
-    let sum = 0;
     const row = mat[i];
-    for (let j = 0; j < mat[0].length; j++) {
-      sum += row[j] * vec[j];
-    }
+    const sum = sumNumArray(row.map((rowj, j) => rowj * vec[j]));
     result.push(sum);
   }
   return result;
@@ -84,10 +79,7 @@ export function mulTMatVec(mat: number[][], vec: number[]): number[] {
   }
   const result: number[] = [];
   for (let j = 0; j < mat[0].length; j++) {
-    let sum = 0;
-    for (let i = 0; i < mat.length; i++) {
-      sum += mat[i][j] * vec[i];
-    }
+    const sum = sumNumArray(mat.map((mati, i) => mati[j] * vec[i]));
     result.push(sum);
   }
   return result;
@@ -101,10 +93,8 @@ export function mulMatTMat(a: number[][], b: number[][]): number[][] {
   for (let i = 0; i < a.length; i++) {
     const row: number[] = [];
     for (let j = 0; j < b.length; j++) {
-      let sum = 0;
-      for (let k = 0; k < a[0].length; k++) {
-        sum += a[i][k] * b[j][k];
-      }
+      const ai = a[i];
+      const sum = sumNumArray(ai.map((aik, k) => aik * b[j][k]));
       row.push(sum);
     }
     result.push(row);
@@ -120,10 +110,7 @@ export function mulTMatMat(a: number[][], b: number[][]): number[][] {
   for (let i = 0; i < a[0].length; i++) {
     const row: number[] = [];
     for (let j = 0; j < b[0].length; j++) {
-      let sum = 0;
-      for (let k = 0; k < a.length; k++) {
-        sum += a[k][i] * b[k][j];
-      }
+      const sum = sumNumArray(a.map((ak, k) => ak[i] * b[k][j]));
       row.push(sum);
     }
     result.push(row);
@@ -137,8 +124,10 @@ export function addMatX(mat1: number[][], mat2: number[][]) {
     throw new Error("行列のサイズが異なります");
   }
   for (let i = 0; i < mat1.length; i++) {
+    const mat1i = mat1[i];
+    const mat2i = mat2[i];
     for (let j = 0; j < mat1[0].length; j++) {
-      mat1[i][j] += mat2[i][j];
+      mat1i[j] += mat2i[j];
     }
   }
 }
@@ -163,8 +152,10 @@ export function addFactorMatX(
     throw new Error("行列のサイズが異なります");
   }
   for (let i = 0; i < mat1.length; i++) {
+    const mat1i = mat1[i];
+    const mat2i = mat2[i];
     for (let j = 0; j < mat1[0].length; j++) {
-      mat1[i][j] += factor * mat2[i][j];
+      mat1i[j] += factor * mat2i[j];
     }
   }
 }
@@ -201,4 +192,16 @@ export function zeroMat(n: number, m: number): number[][] {
 
 export function zeroVec(n: number): number[] {
   return new Array(n).fill(0);
+}
+
+export function sumNumArray(arr: number[]): number {
+  let c = 0;
+  let sum = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const y = arr[i] - c;
+    const t = sum + y;
+    c = t - sum - y;
+    sum = t;
+  }
+  return sum;
 }

@@ -1,4 +1,5 @@
 import type { ScaleFactor } from "../../types/layer.js";
+import { sumNumArray } from "../arithmetics.js";
 
 export function standardizeData(data: string[][]): {
   rows: number[][];
@@ -39,9 +40,9 @@ export function standardizeData(data: string[][]): {
   // 平均化, 標準偏差の計算
   const stddevs: number[] = new Array(width).fill(0);
   for (let j = 0; j < width; j++) {
-    const mean = means1arr[j].sort().reduce((a, b) => a + b, 0) / n;
+    const mean = sumNumArray(means1arr[j]) / n;
     means1[j] = mean;
-    means2[j] = means2arr[j].sort().reduce((a, b) => a + b, 0) / n;
+    means2[j] = sumNumArray(means2arr[j]) / n;
     stddevs[j] = Math.sqrt(means2[j] - mean * mean);
   }
 

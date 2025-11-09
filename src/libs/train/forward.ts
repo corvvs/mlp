@@ -1,4 +1,5 @@
 import type { ModelData } from "../../types/model.js";
+import { sumNumArray } from "../arithmetics.js";
 import { getActivationFunctionActual, softmax } from "./af.js";
 
 export function forwardPass(props: {
@@ -32,13 +33,7 @@ export function forwardPass(props: {
 
     // 活性化前出力の計算
     const zMat = aMat.map((a, k) =>
-      w.map(
-        (wRow, i) =>
-          wRow
-            .map((wij, j) => wij * a[j])
-            .sort()
-            .reduce((sum, val) => sum + val, 0) + b[i]
-      )
+      w.map((wRow, i) => sumNumArray(wRow.map((wij, j) => wij * a[j])) + b[i])
     );
     zMats.push(zMat);
 
