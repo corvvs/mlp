@@ -12,6 +12,7 @@ import {
   getRegularizationFunctionActual,
   getRegularizationGradientFunctionActual,
 } from "../libs/train/regularization.js";
+import type { ModelData } from "../types/model.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -44,7 +45,7 @@ export function command(props: {
 
   // 初期モデルの構築
   const model = buildModelData({
-    seed: 111221111111,
+    seed: 2221,
     scaleFactors: standardizedResult.scaleFactors,
   });
   console.log("Initialized Model:");
@@ -68,16 +69,27 @@ export function command(props: {
     trainData,
     model.batchSize || trainData.length
   );
+  const fullSize = trainData.length;
 
   // とりあえず1エポック, バッチサイズ0(=全データ)でやってみる
   const maxEpochs = 5000;
   let lastTrainLoss: number = Infinity;
   let lastTestLoss: number = Infinity;
   let testLossIncreaseCount = 0;
+  let latestGoodModel: {
+    loss: number;
+    model: ModelData | null;
+  } = {
+    loss: Infinity,
+    model: null,
+  };
   for (let epoch = 0; epoch < maxEpochs; epoch++) {
     // 学習
-    // 順伝播
+
+    let meanTrainLoss = 0;
+    // ミニバッチ
     for (let b = 0; b < batchedData.length; b++) {
+      // 順伝播
       const trainData = batchedData[b];
       const B = trainData.length;
       const { aMats: aMatsTrain, zMats: zMatsTrain } = forwardPass({
@@ -93,9 +105,7 @@ export function command(props: {
         lossFunction: actualLossFunction,
         regularizationFunction: actualRegularizationFunction,
       });
-
-      // const trainLossDiff = trainLoss - lastTrainLoss;
-      // lastTrainLoss = trainLoss;
+      meanTrainLoss += trainLoss * B;
 
       // 逆伝播
       backwardPass({
@@ -121,20 +131,30 @@ export function command(props: {
       lossFunction: actualLossFunction,
       regularizationFunction: null,
     });
+
+    const trainLoss = meanTrainLoss / fullSize;
+    const trainLossDiff = trainLoss - lastTrainLoss;
+    lastTrainLoss = trainLoss;
     const testLossDiff = testLoss - lastTestLoss;
     lastTestLoss = testLoss;
 
     console.log(
       sprintf(
-        "Epoch %4d / %4d: Test Loss = %1.6f(Diff = %+1.6f)",
+        "Epoch %4d / %4d: Train Loss = %1.6f(Diff = %+1.6f), Test Loss = %1.6f(Diff = %+1.6f)",
         epoch + 1,
         maxEpochs,
+        trainLoss,
+        trainLossDiff,
         testLoss,
         testLossDiff
       )
     );
 
-    if (testLossDiff > -0.0001) {
+    if (testLoss < latestGoodModel.loss) {
+      latestGoodModel.loss = testLoss;
+      latestGoodModel.model = JSON.parse(JSON.stringify(model));
+    }
+    if (testLossDiff > -0.000001) {
       testLossIncreaseCount++;
       if (testLossIncreaseCount >= 10) {
         console.log("Test loss increased for 10 consecutive epochs. Stopping.");
@@ -145,6 +165,6 @@ export function command(props: {
     }
   }
 
-  console.log("訓練が完了しました");
-  writeJSONFile("trained.json", model);
+  console.log(`訓練が完了しました: Best Test Loss: ${latestGoodModel.loss}`);
+  writeJSONFile("trained.json", latestGoodModel.model);
 }
