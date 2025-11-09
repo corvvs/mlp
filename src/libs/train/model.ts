@@ -1,11 +1,13 @@
 import type { InitializationMethod } from "../../types/initialization.js";
 import type { LayerInfo, ScaleFactor } from "../../types/layer.js";
 import type { ModelData } from "../../types/model.js";
+import { localSrand } from "../random.js";
 import { initializeParams } from "./initialization.js";
 import { makeOptimizationParam } from "./optimization.js";
 
 export function buildModelData(props: {
   scaleFactors: (ScaleFactor | null)[];
+  seed?: number;
 }): ModelData {
   const initialization: InitializationMethod = {
     method: "Xavier",
@@ -24,14 +26,28 @@ export function buildModelData(props: {
     // 隠れ層
     {
       layerType: "hidden",
-      size: 80,
+      size: 10,
       activationFunction: {
         method: "ReLU",
       },
     },
     {
       layerType: "hidden",
-      size: 20,
+      size: 10,
+      activationFunction: {
+        method: "ReLU",
+      },
+    },
+    {
+      layerType: "hidden",
+      size: 10,
+      activationFunction: {
+        method: "ReLU",
+      },
+    },
+    {
+      layerType: "hidden",
+      size: 10,
       activationFunction: {
         method: "ReLU",
       },
@@ -46,6 +62,8 @@ export function buildModelData(props: {
       },
     },
   ];
+  const seed = props.seed ?? 123;
+  localSrand(seed);
   const parameters = initializeParams({
     initialization,
     layers,
@@ -53,6 +71,7 @@ export function buildModelData(props: {
 
   return {
     version: "1.0.0",
+    seed,
 
     batchSize: 0,
     layerNumber: layers.length,
@@ -65,12 +84,12 @@ export function buildModelData(props: {
     },
 
     optimization: makeOptimizationParam({
-      method: "Adam",
+      method: "AdaGrad",
     }),
 
     regularization: {
       method: "L2",
-      lambda: 1e-4,
+      lambda: 3e-4,
     },
 
     parameters,

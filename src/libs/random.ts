@@ -1,13 +1,33 @@
+let localRandomState = 2463534242;
 export function localRandom(): number {
-  return Math.random();
+  let x = localRandomState;
+  x ^= x << 13;
+  x ^= x >>> 17;
+  x ^= x << 5;
+  localRandomState = x >>> 0; // 符号なし32bit化
+  return localRandomState / 0xffffffff; // 0〜1の範囲に正規化
 }
 
+export function localSrand(seed: number) {
+  localRandomState = seed || 2463534242;
+}
+
+let normalState = 0;
+let z0: number;
+let z1: number;
 export function normalRandom(mean: number, stddev: number): number {
   // Box-Muller法
-  const u1 = localRandom();
-  const u2 = localRandom();
-  const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-  return z0 * stddev + mean;
+  if (normalState === 0) {
+    const u1 = localRandom();
+    const u2 = localRandom();
+    z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
+    normalState = 1;
+    return z0 * stddev + mean;
+  } else {
+    normalState = 0;
+    return z1 * stddev + mean;
+  }
 }
 
 /**

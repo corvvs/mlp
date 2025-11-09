@@ -44,6 +44,7 @@ export function command(props: {
 
   // 初期モデルの構築
   const model = buildModelData({
+    seed: 111221111111,
     scaleFactors: standardizedResult.scaleFactors,
   });
   console.log("Initialized Model:");
