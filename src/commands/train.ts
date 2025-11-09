@@ -69,6 +69,7 @@ export function command(props: {
   const maxEpochs = 5000;
   let lastTrainLoss: number = Infinity;
   let lastTestLoss: number = Infinity;
+  let testLossIncreaseCount = 0;
   for (let epoch = 0; epoch < maxEpochs; epoch++) {
     // 学習
     // 順伝播
@@ -127,6 +128,16 @@ export function command(props: {
         testLossDiff
       )
     );
+
+    if (testLossDiff > -0.0001) {
+      testLossIncreaseCount++;
+      if (testLossIncreaseCount >= 10) {
+        console.log("Test loss increased for 10 consecutive epochs. Stopping.");
+        break;
+      }
+    } else {
+      testLossIncreaseCount = 0;
+    }
   }
 
   console.log("訓練が完了しました");
