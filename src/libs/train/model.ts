@@ -26,28 +26,28 @@ export function buildModelData(props: {
     // 隠れ層
     {
       layerType: "hidden",
-      size: 10,
+      size: 12,
       activationFunction: {
         method: "ReLU",
       },
     },
     {
       layerType: "hidden",
-      size: 10,
+      size: 12,
       activationFunction: {
         method: "ReLU",
       },
     },
     {
       layerType: "hidden",
-      size: 10,
+      size: 12,
       activationFunction: {
         method: "ReLU",
       },
     },
     {
       layerType: "hidden",
-      size: 10,
+      size: 12,
       activationFunction: {
         method: "ReLU",
       },
@@ -73,7 +73,7 @@ export function buildModelData(props: {
     version: "1.0.0",
     seed,
 
-    batchSize: 0,
+    batchSize: 32,
     layerNumber: layers.length,
     layers,
     initialization,
@@ -84,12 +84,12 @@ export function buildModelData(props: {
     },
 
     optimization: makeOptimizationParam({
-      method: "AdaGrad",
+      method: "Adam",
     }),
 
     regularization: {
       method: "L2",
-      lambda: 3e-4,
+      lambda: 1e-4,
     },
 
     parameters,

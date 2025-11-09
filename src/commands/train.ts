@@ -7,7 +7,7 @@ import { applyStandardization, standardizeData } from "../libs/train/data.js";
 import { buildModelData } from "../libs/train/model.js";
 import { forwardPass } from "../libs/train/forward.js";
 import { backwardPass } from "../libs/train/backward.js";
-import { splitData } from "../libs/split.js";
+import { splitData, splitDataBatch } from "../libs/split.js";
 import {
   getRegularizationFunctionActual,
   getRegularizationGradientFunctionActual,
@@ -64,6 +64,10 @@ export function command(props: {
   );
   const actualRegularizationGradientFunction =
     getRegularizationGradientFunctionActual(model.regularization);
+  const batchedData = splitDataBatch(
+    trainData,
+    model.batchSize || trainData.length
+  );
 
   // とりあえず1エポック, バッチサイズ0(=全データ)でやってみる
   const maxEpochs = 5000;
@@ -73,34 +77,37 @@ export function command(props: {
   for (let epoch = 0; epoch < maxEpochs; epoch++) {
     // 学習
     // 順伝播
-    const B = trainData.length;
-    const { aMats: aMatsTrain, zMats: zMatsTrain } = forwardPass({
-      inputVectors: trainData,
-      model,
-    });
+    for (let b = 0; b < batchedData.length; b++) {
+      const trainData = batchedData[b];
+      const B = trainData.length;
+      const { aMats: aMatsTrain, zMats: zMatsTrain } = forwardPass({
+        inputVectors: trainData,
+        model,
+      });
 
-    // 学習誤差の計算
-    const trainLoss = getLoss({
-      inputVectors: trainData,
-      outputMat: aMatsTrain[aMatsTrain.length - 1],
-      wMats: model.parameters.map((p) => p.weights),
-      lossFunction: actualLossFunction,
-      regularizationFunction: actualRegularizationFunction,
-    });
+      // 学習誤差の計算
+      const trainLoss = getLoss({
+        inputVectors: trainData,
+        outputMat: aMatsTrain[aMatsTrain.length - 1],
+        wMats: model.parameters.map((p) => p.weights),
+        lossFunction: actualLossFunction,
+        regularizationFunction: actualRegularizationFunction,
+      });
 
-    const trainLossDiff = trainLoss - lastTrainLoss;
-    lastTrainLoss = trainLoss;
+      // const trainLossDiff = trainLoss - lastTrainLoss;
+      // lastTrainLoss = trainLoss;
 
-    // 逆伝播
-    backwardPass({
-      inputVectors: trainData,
-      model,
-      B,
-      aMats: aMatsTrain,
-      zMats: zMatsTrain,
-      actualOptimizationFunction,
-      actualRegularizationGradientFunction,
-    });
+      // 逆伝播
+      backwardPass({
+        inputVectors: trainData,
+        model,
+        B,
+        aMats: aMatsTrain,
+        zMats: zMatsTrain,
+        actualOptimizationFunction,
+        actualRegularizationGradientFunction,
+      });
+    }
 
     // 評価
     const { aMats: aMatsTest } = forwardPass({
@@ -119,11 +126,9 @@ export function command(props: {
 
     console.log(
       sprintf(
-        "Epoch %4d / %4d: Loss = %1.6f(Diff = %+1.6f), Test Loss = %1.6f(Diff = %+1.6f)",
+        "Epoch %4d / %4d: Test Loss = %1.6f(Diff = %+1.6f)",
         epoch + 1,
         maxEpochs,
-        trainLoss,
-        trainLossDiff,
         testLoss,
         testLossDiff
       )
