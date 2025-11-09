@@ -24,7 +24,7 @@ import {
   zeroVec,
 } from "../arithmetics.js";
 
-type OpzimizationFunction = (
+export type OpzimizationFunction = (
   W: number[][],
   b: number[],
   dW: number[][],
@@ -131,7 +131,6 @@ function getActualMomentumSGD(
     db: number[],
     k: number
   ) => {
-    console.log(`Momentum SGDによるパラメータ更新: ${k}`);
     const vw = vws[k];
     const vb = vbs[k];
 
@@ -172,8 +171,10 @@ function getActualAdaGrad(
 
     // 勾配の二乗和を更新
     for (let i = 0; i < Gw.length; i++) {
+      const Gwi = Gw[i];
+      const dWi = dW[i];
       for (let j = 0; j < Gw[0].length; j++) {
-        Gw[i][j] += dW[i][j] * dW[i][j];
+        Gwi[j] += dWi[j] * dWi[j];
       }
       Gb[i] += db[i] * db[i];
     }

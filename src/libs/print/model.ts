@@ -1,0 +1,87 @@
+import type {
+  ActivationFunction,
+  ActivationFunctionSingleArgument,
+} from "../../types/af.js";
+import type { InitializationMethod } from "../../types/initialization.js";
+import type { LayerInfo } from "../../types/layer.js";
+import type { ModelData } from "../../types/model.js";
+import type { OptimizationMethod } from "../../types/optimization.js";
+
+export function printModel(model: ModelData): void {
+  console.log(
+    "B (Batch Size):",
+    model.batchSize === 0 ? "ALL" : model.batchSize
+  );
+  console.log("Layers:", model.layerNumber);
+  model.layers.forEach((layer, i) => {
+    console.log(` Layer ${i}: ${outLayer(layer)}`);
+  });
+  console.log(
+    "Parameters Initialization Method:",
+    outInitializationMethod(model.initialization)
+  );
+  console.log("Loss Function:", model.lossFunction.method);
+  if (model.regularization) {
+    console.log("Regularization Method:", model.regularization.method);
+  }
+  console.log(
+    "Optimization Method:",
+    outOptimizationMethod(model.optimization)
+  );
+}
+
+function outLayer(layer: LayerInfo): string {
+  switch (layer.layerType) {
+    case "input":
+      return `(Input, ${layer.size})`;
+    case "hidden":
+      return `(Hidden, ${layer.size}, ${outAF(layer.activationFunction)})`;
+    case "output":
+      return `(Output, ${layer.size}, ${outAF(layer.activationFunction)})`;
+  }
+}
+
+function outAF(af: ActivationFunction): string {
+  switch (af.method) {
+    case "ReLU":
+      return `ReLU`;
+    case "sigmoid":
+      return `Sigmoid`;
+    case "tanh":
+      return `Tanh`;
+    case "LeakyReLU":
+      return `LeakyReLU(alpha=${af.alpha})`;
+    case "softmax":
+      return `Softmax`;
+    default:
+      throw new Error(`未知の活性化関数: ${af}`);
+  }
+}
+
+function outInitializationMethod(method: InitializationMethod): string {
+  switch (method.method) {
+    case "Xavier":
+      return `Xavier (dist=${method.dist})`;
+    case "He":
+      return `He (dist=${method.dist})`;
+    default:
+      throw new Error(`未知の初期化方法: ${method}`);
+  }
+}
+
+function outOptimizationMethod(method: OptimizationMethod): string {
+  switch (method.method) {
+    case "SGD":
+      return `SGD (lr=${method.learningRate})`;
+    case "MomentumSGD":
+      return `MomentumSGD (lr=${method.learningRate}, alpha=${method.alpha})`;
+    case "AdaGrad":
+      return `AdaGrad (lr=${method.learningRate}, eps=${method.eps})`;
+    case "RMSProp":
+      return `RMSProp (lr=${method.learningRate}, rho=${method.rho}, eps=${method.eps})`;
+    case "Adam":
+      return `Adam (lr=${method.learningRate}, beta1=${method.beta1}, beta2=${method.beta2}, eps=${method.eps})`;
+    default:
+      throw new Error(`未知の最適化方法: ${method}`);
+  }
+}

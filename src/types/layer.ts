@@ -1,10 +1,6 @@
 // 層の情報
 
-import type {
-  ActivationFunction,
-  ActivationFunctionSingleArgument,
-  AFSoftmax,
-} from "./af.js";
+import type { ActivationFunctionSingleArgument, AFSoftmax } from "./af.js";
 
 export type ScaleFactor = {
   mean: number; // 平均

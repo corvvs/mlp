@@ -14,6 +14,7 @@ export type ModelData = {
   version: string; // 適当
 
   // 広義のハイパーパラメータ
+  seed: number; // 乱数シード
   batchSize: number; // バッチサイズ; 非負整数; 0の場合は全データ
   layerNumber: number; // 入力層・出力層を含む層の数; 2未満の場合は入力エラー
   layers: LayerInfo[]; // 要素数は layerNumber; 最初の要素は InputLayer, 最初以外の要素は GeneralLayer でなければ入力エラー
