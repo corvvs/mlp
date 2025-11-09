@@ -8,6 +8,7 @@ import { makeOptimizationParam } from "./optimization.js";
 export function buildModelData(props: {
   scaleFactors: (ScaleFactor | null)[];
   seed?: number;
+  batchSize?: number;
 }): ModelData {
   const initialization: InitializationMethod = {
     method: "Xavier",
@@ -24,6 +25,7 @@ export function buildModelData(props: {
       scaleFactors: props.scaleFactors,
     },
     // 隠れ層
+
     {
       layerType: "hidden",
       size: 8,
@@ -94,7 +96,7 @@ export function buildModelData(props: {
     version: "1.0.0",
     seed,
 
-    batchSize: 32,
+    batchSize: props.batchSize ?? 32,
     layerNumber: layers.length,
     layers,
     initialization,

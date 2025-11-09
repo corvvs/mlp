@@ -15,7 +15,7 @@ export function command(props: {
   console.log(`データファイル ${actualDataFilePath} を読み込みました`);
 
   // rows を train と test に ratio : (1 - ratio) の比率で分割する
-  const { trainData, testData } = splitData(rows, props.ratio);
+  const { a: trainData, b: testData } = splitData(rows, props.ratio);
 
   console.log(
     sprintf(

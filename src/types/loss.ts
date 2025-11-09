@@ -6,4 +6,4 @@ export type LossBCE = {
 
 export type LossFunction = LossBCE;
 
-export type LossFunctionActual = (yTrue: number, yPred: number) => number;
+export type LossFunctionActual = (yAnswer: number, yPred: number) => number;

@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "fs";
+import type { TrainingProgress } from "../types/data.js";
 
 /**
  * 前処理対象のCSVファイルを読み, 行の配列として返す
@@ -39,4 +40,13 @@ export function writeCSVFile(path: string, rows: string[][]) {
 export function writeJSONFile(path: string, obj: any) {
   const data = JSON.stringify(obj, null, 2);
   writeFileSync(path, data, "utf-8");
+}
+
+export function writeGNUPlotFile(path: string, data: TrainingProgress[]) {
+  const lines = data
+    .map((row) => {
+      return `${row.epoch} ${row.trainLoss} ${row.valLoss} ${row.trainAccuracy} ${row.valAccuracy}\n`;
+    })
+    .join("");
+  writeFileSync(path, lines, "utf-8");
 }

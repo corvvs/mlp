@@ -1,5 +1,5 @@
 import { sprintf } from "sprintf-js";
-import { readCSVFile, writeCSVFile, writeJSONFile } from "../libs/io.js";
+import { readCSVFile, writeGNUPlotFile, writeJSONFile } from "../libs/io.js";
 import { getLoss, getLossFunctionActual } from "../libs/train/loss.js";
 import { getOptimizationFunctionActual } from "../libs/train/optimization.js";
 import { printModel } from "../libs/print/model.js";
@@ -13,6 +13,7 @@ import {
   getRegularizationGradientFunctionActual,
 } from "../libs/train/regularization.js";
 import type { ModelData } from "../types/model.js";
+import type { TrainingProgress } from "../types/data.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -23,29 +24,26 @@ export function command(props: {
   // データファイルの読み取り
   const dataFilePath = props.dataFilePath;
   const csvRows = readCSVFile(dataFilePath);
-  const { trainData: trainDataRaw, testData: testDataRaw } = splitData(
-    csvRows,
-    0.8
-  );
+  const { a: trainDataRaw, b: valDataRaw } = splitData(csvRows, 0.8);
 
   // 前処理: Answer列以外の標準化
   console.log("Standardizing Input...");
   const standardizedResult = standardizeData(trainDataRaw);
   const trainData = standardizedResult.rows;
-  const testData = applyStandardization(
-    testDataRaw,
+  const valData = applyStandardization(
+    valDataRaw,
     standardizedResult.scaleFactors
   );
 
-  // デバッグ用: 標準化後のデータをファイルに書き出す
-  writeCSVFile(
-    "debug.csv",
-    trainData.map((row) => row.map((v) => sprintf("%1.4f", v)))
-  );
+  // // デバッグ用: 標準化後のデータをファイルに書き出す
+  // writeCSVFile(
+  //   "debug.csv",
+  //   trainData.map((row) => row.map((v) => sprintf("%1.4f", v)))
+  // );
 
   // 初期モデルの構築
   const model = buildModelData({
-    seed: 2221,
+    seed: 1234,
     scaleFactors: standardizedResult.scaleFactors,
   });
   console.log("Initialized Model:");
@@ -53,7 +51,7 @@ export function command(props: {
   console.log();
 
   // とりあえず書き出してみる
-  writeJSONFile("debug.json", model);
+  // writeJSONFile("debug.json", model);
 
   const actualLossFunction = getLossFunctionActual(model.lossFunction);
   const actualOptimizationFunction = getOptimizationFunctionActual(
@@ -71,11 +69,12 @@ export function command(props: {
   );
   const fullSize = trainData.length;
 
-  // とりあえず1エポック, バッチサイズ0(=全データ)でやってみる
   const maxEpochs = 5000;
+
+  const progress: TrainingProgress[] = [];
   let lastTrainLoss: number = Infinity;
-  let lastTestLoss: number = Infinity;
-  let testLossIncreaseCount = 0;
+  let lastValLoss: number = Infinity;
+  let valLossIncreaseCount = 0;
   let latestGoodModel: {
     loss: number;
     model: ModelData | null;
@@ -83,10 +82,12 @@ export function command(props: {
     loss: Infinity,
     model: null,
   };
+
   for (let epoch = 0; epoch < maxEpochs; epoch++) {
     // 学習
-
     let meanTrainLoss = 0;
+    let trainAccuracy = 0;
+
     // ミニバッチ
     for (let b = 0; b < batchedData.length; b++) {
       // 順伝播
@@ -98,14 +99,16 @@ export function command(props: {
       });
 
       // 学習誤差の計算
-      const trainLoss = getLoss({
+      const { meanLoss: trainLoss, corrects: trainCorrects } = getLoss({
         inputVectors: trainData,
         outputMat: aMatsTrain[aMatsTrain.length - 1],
         wMats: model.parameters.map((p) => p.weights),
         lossFunction: actualLossFunction,
         regularizationFunction: actualRegularizationFunction,
       });
+
       meanTrainLoss += trainLoss * B;
+      trainAccuracy += trainCorrects;
 
       // 逆伝播
       backwardPass({
@@ -120,13 +123,13 @@ export function command(props: {
     }
 
     // 評価
-    const { aMats: aMatsTest } = forwardPass({
-      inputVectors: testData,
+    const { aMats: aMatsVal } = forwardPass({
+      inputVectors: valData,
       model,
     });
-    const testLoss = getLoss({
-      inputVectors: testData,
-      outputMat: aMatsTest[aMatsTest.length - 1],
+    const { meanLoss: valLoss, corrects: valCorrects } = getLoss({
+      inputVectors: valData,
+      outputMat: aMatsVal[aMatsVal.length - 1],
       wMats: [],
       lossFunction: actualLossFunction,
       regularizationFunction: null,
@@ -135,36 +138,47 @@ export function command(props: {
     const trainLoss = meanTrainLoss / fullSize;
     const trainLossDiff = trainLoss - lastTrainLoss;
     lastTrainLoss = trainLoss;
-    const testLossDiff = testLoss - lastTestLoss;
-    lastTestLoss = testLoss;
+    const valLossDiff = valLoss - lastValLoss;
+    lastValLoss = valLoss;
+    trainAccuracy /= fullSize;
+    const valAccuracy = valCorrects / valData.length;
 
     console.log(
       sprintf(
-        "Epoch %4d / %4d: Train Loss = %1.6f(Diff = %+1.6f), Test Loss = %1.6f(Diff = %+1.6f)",
+        "Epoch %4d: TrLoss = %1.6f(Diff = %+1.6f), ValLoss = %1.6f(Diff = %+1.6f), TrAcc = %1.2f, ValAcc = %1.2f",
         epoch + 1,
-        maxEpochs,
         trainLoss,
         trainLossDiff,
-        testLoss,
-        testLossDiff
+        valLoss,
+        valLossDiff,
+        trainAccuracy,
+        valAccuracy
       )
     );
+    progress.push({
+      epoch: epoch + 1,
+      trainLoss,
+      valLoss,
+      trainAccuracy,
+      valAccuracy,
+    });
 
-    if (testLoss < latestGoodModel.loss) {
-      latestGoodModel.loss = testLoss;
+    if (valLoss < latestGoodModel.loss) {
+      latestGoodModel.loss = valLoss;
       latestGoodModel.model = JSON.parse(JSON.stringify(model));
     }
-    if (testLossDiff > -0.000001) {
-      testLossIncreaseCount++;
-      if (testLossIncreaseCount >= 10) {
-        console.log("Test loss increased for 10 consecutive epochs. Stopping.");
+    if (valLossDiff > -0.000001) {
+      valLossIncreaseCount++;
+      if (valLossIncreaseCount >= 10 || valLoss > 2 * latestGoodModel.loss) {
+        console.log("Val loss increased for 10 consecutive epochs. Stopping.");
         break;
       }
     } else {
-      testLossIncreaseCount = 0;
+      valLossIncreaseCount = 0;
     }
   }
 
-  console.log(`訓練が完了しました: Best Test Loss: ${latestGoodModel.loss}`);
+  console.log(`訓練が完了しました: Best Val Loss: ${latestGoodModel.loss}`);
   writeJSONFile("trained.json", latestGoodModel.model);
+  writeGNUPlotFile("training_progress.dat", progress);
 }
