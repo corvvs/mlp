@@ -26,6 +26,9 @@ export type ActivationFunctionSingleArgument =
   | AFReLU
   | AFLeakyReLU;
 
+export type ActivationFunctionSingleArgumentMethod =
+  ActivationFunctionSingleArgument["method"];
+
 export type ActivationFunction = AFSoftmax | ActivationFunctionSingleArgument;
 
 export type ActivatationFunctionActual = (x: number) => number;

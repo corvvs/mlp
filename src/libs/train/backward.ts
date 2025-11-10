@@ -8,10 +8,11 @@ import {
   subVector,
 } from "../arithmetics.js";
 import { getDerivativeActivationFunctionActual } from "./af.js";
+import { getDerivativeLossFunctionActual } from "./loss.js";
 import type { OpzimizationFunction } from "./optimization.js";
 
 export function backwardPass(props: {
-  inputVectors: number[][];
+  answer: number[];
   model: ModelData;
   B: number;
   aMats: number[][][];
@@ -20,7 +21,7 @@ export function backwardPass(props: {
   actualRegularizationGradientFunction: RegularizationGradientFunction | null;
 }) {
   const {
-    inputVectors,
+    answer,
     model,
     B,
     aMats,
@@ -39,11 +40,13 @@ export function backwardPass(props: {
       case "output": {
         // 出力層
         const aMat = aMats[k];
+        const actualDerivativeLossFunction = getDerivativeLossFunctionActual(
+          model.lossFunction
+        );
         aMat.map((aVec, l) => {
-          const y00 = inputVectors[l][0];
+          const y00 = answer[l]; // 悪性(M)なら1, 良性(B)なら0
           const y01 = 1 - y00;
-          const y = [y00, y01];
-          const dVec = subVector(aVec, y);
+          const dVec = actualDerivativeLossFunction(aVec, [y00, y01]);
           dMats[k] = dMats[k] ?? [];
           dMats[k].push(dVec);
         });
@@ -76,17 +79,17 @@ export function backwardPass(props: {
     // console.log(`パラメータの誤差ベクトルを計算します: ${k}`);
     const w = model.parameters[k - 1].weights;
     const prevLayer = model.layers[k - 1];
-    const dW: number[][] = Array.from({ length: currLayer.size }, () =>
+    let dW: number[][] = Array.from({ length: currLayer.size }, () =>
       Array(prevLayer.size).fill(0)
     );
-    const dB: number[] = new Array(currLayer.size).fill(0);
+    let dB: number[] = new Array(currLayer.size).fill(0);
     const aMatPrev = aMats[k - 1];
     const dMat = dMats[k];
     dMat.map((dVec, l) => {
       // 重みの誤差行列
       let dWMat = mulTMatMat([dVec], [aMatPrev[l]]);
       if (actualRegularizationGradientFunction) {
-        addMatX(dWMat, actualRegularizationGradientFunction(w, B));
+        addMatX(dWMat, actualRegularizationGradientFunction(w));
       }
 
       const dBMat = dVec;
@@ -109,6 +112,18 @@ export function backwardPass(props: {
 
     const b = model.parameters[k - 1].biases;
     // console.log(`層 ${k} のパラメータ更新を行います`);
+
+    const gradientNorm = Math.sqrt(
+      dW.flat().reduce((sum, x) => sum + x * x, 0) +
+        dB.reduce((sum, x) => sum + x * x, 0)
+    );
+    const maxNorm = 5.0; // 閾値
+    if (gradientNorm > maxNorm) {
+      const scale = maxNorm / gradientNorm;
+      dW = dW.map((row) => row.map((x) => x * scale));
+      dB = dB.map((x) => x * scale);
+    }
+
     actualOptimizationFunction(w, b, dW, dB, k - 1);
   }
 }

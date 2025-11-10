@@ -1,6 +1,11 @@
 import { sprintf } from "sprintf-js";
 import { readCSVFile, writeGNUPlotFile, writeJSONFile } from "../libs/io.js";
-import { getLoss, getLossFunctionActual } from "../libs/train/loss.js";
+import {
+  getLoss,
+  getLossFunctionActual,
+  getMetrics,
+  getMetricsImprovement,
+} from "../libs/train/loss.js";
 import { getOptimizationFunctionActual } from "../libs/train/optimization.js";
 import { printModel } from "../libs/print/model.js";
 import { applyStandardization, standardizeData } from "../libs/train/data.js";
@@ -14,10 +19,21 @@ import {
 } from "../libs/train/regularization.js";
 import type { ModelData } from "../types/model.js";
 import type { TrainingProgress } from "../types/data.js";
+import type { EpochMetrics } from "../types/loss.js";
+import type { ActivationFunctionSingleArgumentMethod } from "../types/af.js";
+import { defaultModelFilePath } from "../constants.js";
+import { shuffleArray } from "../libs/random.js";
+import type { RegularizationMethod } from "../types/regularization.js";
 
 export function command(props: {
   dataFilePath: string;
   modelOutFilePath: string;
+  epochs: number;
+  seed?: number;
+  batchSize: number;
+  defaultActivationFunction?: ActivationFunctionSingleArgumentMethod;
+  hiddenLayerSizes: number[];
+  regularization: RegularizationMethod | null;
 }) {
   console.log("[Train]");
 
@@ -42,9 +58,15 @@ export function command(props: {
   // );
 
   // 初期モデルの構築
+  const { seed, batchSize } = props;
   const model = buildModelData({
-    seed: 1234,
+    maxEpochs: props.epochs,
+    seed: seed ?? null,
+    batchSize: batchSize ?? null,
     scaleFactors: standardizedResult.scaleFactors,
+    defaultActivationFunction: props.defaultActivationFunction ?? "ReLU",
+    hiddenLayerSizes: props.hiddenLayerSizes,
+    regularization: props.regularization,
   });
   console.log("Initialized Model:");
   printModel(model);
@@ -63,37 +85,62 @@ export function command(props: {
   );
   const actualRegularizationGradientFunction =
     getRegularizationGradientFunctionActual(model.regularization);
-  const batchedData = splitDataBatch(
-    trainData,
-    model.batchSize || trainData.length
-  );
   const fullSize = trainData.length;
 
-  const maxEpochs = 5000;
-
   const progress: TrainingProgress[] = [];
-  let lastTrainLoss: number = Infinity;
-  let lastValLoss: number = Infinity;
+  let lastValMetrics: EpochMetrics = {
+    loss: Infinity,
+    accuracy: Infinity,
+    precision: Infinity,
+    recall: Infinity,
+    specificity: Infinity,
+    f1Score: Infinity,
+  };
   let valLossIncreaseCount = 0;
   let latestGoodModel: {
     epoch: number;
-    loss: number;
+    score: number;
     model: ModelData | null;
   } = {
     epoch: 0,
-    loss: Infinity,
+    score: Infinity,
     model: null,
   };
 
-  for (let epoch = 0; epoch < maxEpochs; epoch++) {
+  console.log(
+    sprintf(
+      "%5s %7s %7s %7s %7s %7s %7s %7s",
+      "Epoch",
+      "TrLoss",
+      "TrAcc",
+      "ValLoss",
+      "ValAcc",
+      "ValSpec",
+      "ValRec",
+      "ValF1"
+    )
+  );
+  for (let epoch = 0; epoch < model.maxEpochs; epoch++) {
     // 学習
     let meanTrainLoss = 0;
     let trainAccuracy = 0;
+    model.bestEpoch = epoch + 1;
+    const trainTfpn = {
+      tp: 0,
+      tn: 0,
+      fp: 0,
+      fn: 0,
+    };
 
     // ミニバッチ
+    const batchedData = splitDataBatch(
+      shuffleArray(trainData),
+      model.batchSize || trainData.length
+    );
     for (let b = 0; b < batchedData.length; b++) {
       // 順伝播
       const trainData = batchedData[b];
+      const answerVector = trainData.map((row) => row[0]);
       const B = trainData.length;
       const { aMats: aMatsTrain, zMats: zMatsTrain } = forwardPass({
         inputVectors: trainData,
@@ -101,20 +148,28 @@ export function command(props: {
       });
 
       // 学習誤差の計算
-      const { meanLoss: trainLoss, corrects: trainCorrects } = getLoss({
+      const {
+        meanLoss: trainLoss,
+        corrects: trainCorrects,
+        ...batchTfpn
+      } = getLoss({
         inputVectors: trainData,
         outputMats: aMatsTrain,
         wMats: model.parameters.map((p) => p.weights),
         lossFunction: actualLossFunction,
         regularizationFunction: actualRegularizationFunction,
       });
+      trainTfpn.tp += batchTfpn.tp;
+      trainTfpn.tn += batchTfpn.tn;
+      trainTfpn.fp += batchTfpn.fp;
+      trainTfpn.fn += batchTfpn.fn;
 
       meanTrainLoss += trainLoss * B;
       trainAccuracy += trainCorrects;
 
       // 逆伝播
       backwardPass({
-        inputVectors: trainData,
+        answer: answerVector,
         model,
         B,
         aMats: aMatsTrain,
@@ -129,7 +184,11 @@ export function command(props: {
       inputVectors: valData,
       model,
     });
-    const { meanLoss: valLoss, corrects: valCorrects } = getLoss({
+    const {
+      meanLoss: valLoss,
+      corrects: valCorrects,
+      ...valTfpn
+    } = getLoss({
       inputVectors: valData,
       outputMats: aMatsVal,
       wMats: [],
@@ -138,23 +197,31 @@ export function command(props: {
     });
 
     const trainLoss = meanTrainLoss / fullSize;
-    const trainLossDiff = trainLoss - lastTrainLoss;
-    lastTrainLoss = trainLoss;
-    const valLossDiff = valLoss - lastValLoss;
-    lastValLoss = valLoss;
     trainAccuracy /= fullSize;
+    const trainMetrics = getMetrics({ loss: trainLoss, ...trainTfpn });
+    const valMetrics = getMetrics({ loss: valLoss, ...valTfpn });
+    model.trainMetrics.push(trainMetrics);
+    model.valMetrics.push(valMetrics);
+
     const valAccuracy = valCorrects / valData.length;
+
+    const valMetricsImprovement = getMetricsImprovement(
+      lastValMetrics,
+      valMetrics
+    );
+    lastValMetrics = valMetrics;
 
     console.log(
       sprintf(
-        "Epoch %4d: TrLoss = %1.6f(Diff = %+1.6f), ValLoss = %1.6f(Diff = %+1.6f), TrAcc = %1.2f, ValAcc = %1.2f",
+        "%5d %1.5f %1.5f %1.5f %1.5f %1.5f %1.5f %1.5f",
         epoch + 1,
         trainLoss,
-        trainLossDiff,
-        valLoss,
-        valLossDiff,
         trainAccuracy,
-        valAccuracy
+        valLoss,
+        valAccuracy,
+        valMetrics.specificity,
+        valMetrics.recall,
+        valMetrics.f1Score
       )
     );
     progress.push({
@@ -165,16 +232,17 @@ export function command(props: {
       valAccuracy,
     });
 
-    if (valLoss < latestGoodModel.loss) {
-      latestGoodModel.loss = valLoss;
+    const scoreToMinimize = valMetrics.loss;
+    if (scoreToMinimize < latestGoodModel.score) {
+      latestGoodModel.score = scoreToMinimize;
       latestGoodModel.model = JSON.parse(JSON.stringify(model));
       latestGoodModel.epoch = epoch + 1;
     }
-    if (valLossDiff > -0.000001) {
+    if (valMetricsImprovement.loss > -0.0001) {
       valLossIncreaseCount++;
       if (
         valLossIncreaseCount >= 10 ||
-        valLoss > 2 * latestGoodModel.loss ||
+        scoreToMinimize > 2 * latestGoodModel.score ||
         latestGoodModel.epoch < epoch - 100
       ) {
         console.log("Stopping.");
@@ -185,7 +253,13 @@ export function command(props: {
     }
   }
 
-  console.log(`訓練が完了しました: Best Val Loss: ${latestGoodModel.loss}`);
-  writeJSONFile("trained.json", latestGoodModel.model);
+  console.log(
+    `訓練が完了しました: Best Score: ${latestGoodModel.score} at epoch ${latestGoodModel.epoch}`
+  );
+  writeJSONFile(defaultModelFilePath, {
+    ...latestGoodModel.model,
+    trainMetrics: model.trainMetrics,
+    valMetrics: model.valMetrics,
+  });
   writeGNUPlotFile("training_progress.dat", progress);
 }

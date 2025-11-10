@@ -1,15 +1,41 @@
+import type { ActivationFunctionSingleArgumentMethod } from "../../types/af.js";
 import type { InitializationMethod } from "../../types/initialization.js";
-import type { LayerInfo, ScaleFactor } from "../../types/layer.js";
+import type {
+  HiddenLayerInfo,
+  LayerInfo,
+  ScaleFactor,
+} from "../../types/layer.js";
 import type { ModelData } from "../../types/model.js";
+import type { RegularizationMethod } from "../../types/regularization.js";
 import { localSrand } from "../random.js";
 import { initializeParams } from "./initialization.js";
 import { makeOptimizationParam } from "./optimization.js";
 
 export function buildModelData(props: {
   scaleFactors: (ScaleFactor | null)[];
-  seed?: number;
+  maxEpochs: number;
+  seed: number | null;
   batchSize?: number;
+  defaultActivationFunction: ActivationFunctionSingleArgumentMethod;
+  regularization: RegularizationMethod | null;
+  hiddenLayerSizes: number[];
 }): ModelData {
+  const hiddenLayerSizes = props.hiddenLayerSizes ?? [24, 24];
+
+  const hiddenLayers: HiddenLayerInfo[] = hiddenLayerSizes.map((size) => ({
+    layerType: "hidden",
+    size,
+    activationFunction:
+      props.defaultActivationFunction === "LeakyReLU"
+        ? {
+            method: props.defaultActivationFunction,
+            alpha: 0.01,
+          }
+        : {
+            method: props.defaultActivationFunction,
+          },
+  }));
+
   const initialization: InitializationMethod = {
     method: "Xavier",
     dist: "uniform",
@@ -25,56 +51,7 @@ export function buildModelData(props: {
       scaleFactors: props.scaleFactors,
     },
     // 隠れ層
-
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
+    ...hiddenLayers,
 
     {
       // 出力層
@@ -94,15 +71,16 @@ export function buildModelData(props: {
 
   return {
     version: "1.0.0",
+    maxEpochs: props.maxEpochs,
     seed,
 
-    batchSize: props.batchSize ?? 32,
+    batchSize: props.batchSize ?? 8,
     layerNumber: layers.length,
     layers,
     initialization,
 
     lossFunction: {
-      method: "BCE",
+      method: "CCE",
       eps: 1e-9,
     },
 
@@ -110,11 +88,11 @@ export function buildModelData(props: {
       method: "Adam",
     }),
 
-    regularization: {
-      method: "L2",
-      lambda: 1e-4,
-    },
+    ...(props.regularization ? { regularization: props.regularization } : {}),
 
+    bestEpoch: 0,
+    trainMetrics: [],
+    valMetrics: [],
     parameters,
   };
 }

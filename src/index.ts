@@ -5,6 +5,8 @@ import {
   defaultTestDataFilePath,
   defaultTrainDataFilePath,
 } from "./constants.js";
+import type { ActivationFunctionSingleArgumentMethod } from "./types/af.js";
+import { parseRegularizationMethod } from "./libs/train/regularization.js";
 
 const yargsInstance = yargs(hideBin(process.argv))
   .scriptName("mlp")
@@ -41,6 +43,37 @@ const yargsInstance = yargs(hideBin(process.argv))
     description: "モデル出力ファイルのパス",
     default: defaultModelFilePath,
     requiresArg: false,
+  })
+  .option("epochs", {
+    type: "number",
+    description: "エポック数",
+    default: 5000,
+  })
+  .option("batch-size", {
+    type: "number",
+    description: "バッチサイズ",
+    default: 32,
+  })
+  .option("seed", {
+    type: "number",
+    description: "乱数シード",
+    default: 1234,
+  })
+  .option("hidden-layers", {
+    type: "string",
+    description: "隠れ層の構成(カンマ区切りのユニット数)",
+    default: "24,24",
+  })
+  .option("default-activation", {
+    type: "string",
+    enums: ["ReLU", "sigmoid", "tanh", "leakyReLU"],
+    description: "デフォルトの活性化関数",
+    default: "ReLU",
+  })
+  .option("regularization", {
+    type: "string",
+    description: '正則化; "正則化方式,パラメータ..." の形式で指定',
+    example: "L2,0.001",
   })
   // predict 向けオプション
   .option("model", {
@@ -101,9 +134,46 @@ const yargsInstance = yargs(hideBin(process.argv))
     async (argv) => {
       const { command } = await import("./commands/train.js");
       try {
+        const hiddenLayerSizes = ((arg: string) => {
+          const a = arg.trim();
+          const m = a.match(/^(\d+)(,\d+)*$/);
+          if (!m) {
+            throw new Error(
+              `不正な隠れ層の指定: ${arg} (カンマ区切りの正の整数で指定してください)`
+            );
+          }
+          return a.split(",").map((s) => parseInt(s, 10));
+        })(argv.hiddenLayers);
+        const defaultActivationFunction: ActivationFunctionSingleArgumentMethod =
+          ((arg: string) => {
+            switch (arg.toLowerCase()) {
+              case "relu":
+                return "ReLU";
+              case "tanh":
+                return "tanh";
+              case "leakyrelu":
+                return "LeakyReLU";
+              case "sigmoid":
+                return "sigmoid";
+              default:
+                throw new Error(
+                  `不明な活性化関数: ${arg} (ReLU, sigmoid, tanh, LeakyReLU のいずれかを指定してください)`
+                );
+            }
+          })(argv.defaultActivation);
+        const regularization = parseRegularizationMethod(
+          argv.regularization ?? null
+        );
+
         command({
           dataFilePath: argv.data ?? defaultTrainDataFilePath,
           modelOutFilePath: argv.outModel,
+          epochs: argv.epochs,
+          seed: argv.seed,
+          batchSize: argv.batchSize,
+          defaultActivationFunction: defaultActivationFunction,
+          hiddenLayerSizes,
+          regularization,
         });
       } catch (err) {
         console.error("モデル訓練中にエラーが発生しました:", err);

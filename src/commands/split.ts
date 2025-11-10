@@ -1,6 +1,5 @@
 import { sprintf } from "sprintf-js";
 import { readCSVFile, writeCSVFile } from "../libs/io.js";
-import { getShuffledPermutation } from "../libs/random.js";
 import { defaultPreprocDataFilePath } from "../constants.js";
 import { splitData } from "../libs/split.js";
 

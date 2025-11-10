@@ -44,3 +44,13 @@ export function getShuffledPermutation(n: number): number[] {
   }
   return indices;
 }
+
+export function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = array.slice();
+  const n = shuffled.length;
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(localRandom() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}

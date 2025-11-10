@@ -8,7 +8,4 @@ export type RegularizationMethod = RegL2;
 
 export type RegularizationFunction = (wMats: number[][][]) => number;
 
-export type RegularizationGradientFunction = (
-  wMat: number[][],
-  B: number
-) => number[][];
+export type RegularizationGradientFunction = (wMat: number[][]) => number[][];
