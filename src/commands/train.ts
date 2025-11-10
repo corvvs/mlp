@@ -76,9 +76,11 @@ export function command(props: {
   let lastValLoss: number = Infinity;
   let valLossIncreaseCount = 0;
   let latestGoodModel: {
+    epoch: number;
     loss: number;
     model: ModelData | null;
   } = {
+    epoch: 0,
     loss: Infinity,
     model: null,
   };
@@ -101,7 +103,7 @@ export function command(props: {
       // 学習誤差の計算
       const { meanLoss: trainLoss, corrects: trainCorrects } = getLoss({
         inputVectors: trainData,
-        outputMat: aMatsTrain[aMatsTrain.length - 1],
+        outputMats: aMatsTrain,
         wMats: model.parameters.map((p) => p.weights),
         lossFunction: actualLossFunction,
         regularizationFunction: actualRegularizationFunction,
@@ -129,7 +131,7 @@ export function command(props: {
     });
     const { meanLoss: valLoss, corrects: valCorrects } = getLoss({
       inputVectors: valData,
-      outputMat: aMatsVal[aMatsVal.length - 1],
+      outputMats: aMatsVal,
       wMats: [],
       lossFunction: actualLossFunction,
       regularizationFunction: null,
@@ -166,11 +168,16 @@ export function command(props: {
     if (valLoss < latestGoodModel.loss) {
       latestGoodModel.loss = valLoss;
       latestGoodModel.model = JSON.parse(JSON.stringify(model));
+      latestGoodModel.epoch = epoch + 1;
     }
     if (valLossDiff > -0.000001) {
       valLossIncreaseCount++;
-      if (valLossIncreaseCount >= 10 || valLoss > 2 * latestGoodModel.loss) {
-        console.log("Val loss increased for 10 consecutive epochs. Stopping.");
+      if (
+        valLossIncreaseCount >= 10 ||
+        valLoss > 2 * latestGoodModel.loss ||
+        latestGoodModel.epoch < epoch - 100
+      ) {
+        console.log("Stopping.");
         break;
       }
     } else {

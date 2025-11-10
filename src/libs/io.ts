@@ -50,3 +50,8 @@ export function writeGNUPlotFile(path: string, data: TrainingProgress[]) {
     .join("");
   writeFileSync(path, lines, "utf-8");
 }
+
+export function readJSONFile<T>(path: string): T {
+  const data = readFileSync(path, "utf-8");
+  return JSON.parse(data) as T;
+}

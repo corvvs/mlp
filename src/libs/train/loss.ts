@@ -22,7 +22,7 @@ export function getLossFunctionActual(
 
 export function getLoss(props: {
   inputVectors: number[][];
-  outputMat: number[][];
+  outputMats: number[][][];
   wMats: number[][][];
   lossFunction: LossFunctionActual;
   regularizationFunction: RegularizationFunction | null;
@@ -30,11 +30,12 @@ export function getLoss(props: {
   let meanLoss = 0;
   const {
     inputVectors,
-    outputMat,
+    outputMats,
     lossFunction,
     wMats,
     regularizationFunction,
   } = props;
+  const outputMat = outputMats[outputMats.length - 1];
   const regularizationContribution = regularizationFunction
     ? regularizationFunction(wMats)
     : 0;

@@ -42,6 +42,13 @@ const yargsInstance = yargs(hideBin(process.argv))
     default: defaultModelFilePath,
     requiresArg: false,
   })
+  // predict 向けオプション
+  .option("model", {
+    type: "string",
+    description: "モデルファイルのパス",
+    default: defaultModelFilePath,
+    requiresArg: false,
+  })
   .command(
     "help",
     "Show help message",
@@ -100,6 +107,23 @@ const yargsInstance = yargs(hideBin(process.argv))
         });
       } catch (err) {
         console.error("モデル訓練中にエラーが発生しました:", err);
+        process.exit(1);
+      }
+    }
+  )
+  .command(
+    "predict",
+    "予測を実行します",
+    () => {},
+    async (argv) => {
+      const { command } = await import("./commands/predict.js");
+      try {
+        command({
+          dataFilePath: argv.data ?? defaultTestDataFilePath,
+          modelFilePath: argv.model ?? defaultModelFilePath,
+        });
+      } catch (err) {
+        console.error("予測中にエラーが発生しました:", err);
         process.exit(1);
       }
     }
