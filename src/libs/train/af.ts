@@ -1,7 +1,32 @@
 import type {
   ActivatationFunctionActual,
   ActivationFunction,
+  ActivationFunctionSingleArgument,
 } from "../../types/af.js";
+
+export function parseActivationFunction(
+  str: string
+): ActivationFunctionSingleArgument {
+  const parts = str.split(",");
+  const method = parts[0];
+  switch (method.toLowerCase()) {
+    case "sigmoid":
+      return { method: "sigmoid" };
+    case "tanh":
+      return { method: "tanh" };
+    case "relu":
+      return { method: "ReLU" };
+    case "leakyrelu": {
+      const alpha = parts.length >= 2 ? parseFloat(parts[1]) : 0.01;
+      if (isNaN(alpha)) {
+        throw new Error(`不正なLeakyReLUパラメータ: ${parts[1]}`);
+      }
+      return { method: "LeakyReLU", alpha: alpha };
+    }
+    default:
+      throw new Error(`未知の活性化関数: ${method}`);
+  }
+}
 
 // 活性化関数の実装を取得する; ただし, softmax はここでは扱わない
 export function getActivationFunctionActual(

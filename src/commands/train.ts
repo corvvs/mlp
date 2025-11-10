@@ -20,10 +20,11 @@ import {
 import type { ModelData } from "../types/model.js";
 import type { TrainingProgress } from "../types/data.js";
 import type { EpochMetrics } from "../types/loss.js";
-import type { ActivationFunctionSingleArgumentMethod } from "../types/af.js";
+import type { ActivationFunctionSingleArgument } from "../types/af.js";
 import { defaultModelFilePath } from "../constants.js";
 import { shuffleArray } from "../libs/random.js";
 import type { RegularizationMethod } from "../types/regularization.js";
+import type { OptimizationMethod } from "../types/optimization.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -31,9 +32,10 @@ export function command(props: {
   epochs: number;
   seed?: number;
   batchSize: number;
-  defaultActivationFunction?: ActivationFunctionSingleArgumentMethod;
+  defaultActivationFunction: ActivationFunctionSingleArgument;
   hiddenLayerSizes: number[];
   regularization: RegularizationMethod | null;
+  optimization: OptimizationMethod;
 }) {
   console.log("[Train]");
 
@@ -64,9 +66,10 @@ export function command(props: {
     seed: seed ?? null,
     batchSize: batchSize ?? null,
     scaleFactors: standardizedResult.scaleFactors,
-    defaultActivationFunction: props.defaultActivationFunction ?? "ReLU",
+    defaultActivationFunction: props.defaultActivationFunction,
     hiddenLayerSizes: props.hiddenLayerSizes,
     regularization: props.regularization,
+    optimization: props.optimization,
   });
   console.log("Initialized Model:");
   printModel(model);
@@ -216,9 +219,9 @@ export function command(props: {
         "%5d %1.5f %1.5f %1.5f %1.5f %1.5f %1.5f %1.5f",
         epoch + 1,
         trainLoss,
-        trainAccuracy,
+        trainMetrics.accuracy,
         valLoss,
-        valAccuracy,
+        valMetrics.accuracy,
         valMetrics.specificity,
         valMetrics.recall,
         valMetrics.f1Score

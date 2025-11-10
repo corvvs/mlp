@@ -6,6 +6,7 @@ import type { InitializationMethod } from "../../types/initialization.js";
 import type { LayerInfo } from "../../types/layer.js";
 import type { ModelData } from "../../types/model.js";
 import type { OptimizationMethod } from "../../types/optimization.js";
+import type { RegularizationMethod } from "../../types/regularization.js";
 
 export function printModel(model: ModelData): void {
   console.log(
@@ -22,7 +23,10 @@ export function printModel(model: ModelData): void {
   );
   console.log("Loss Function:", model.lossFunction.method);
   if (model.regularization) {
-    console.log("Regularization Method:", model.regularization.method);
+    console.log(
+      "Regularization Method:",
+      outRegularizationMethod(model.regularization)
+    );
   }
   console.log(
     "Optimization Method:",
@@ -66,6 +70,15 @@ function outInitializationMethod(method: InitializationMethod): string {
       return `He (dist=${method.dist})`;
     default:
       throw new Error(`未知の初期化方法: ${method}`);
+  }
+}
+
+function outRegularizationMethod(method: RegularizationMethod): string {
+  switch (method.method) {
+    case "L2":
+      return `L2 (lambda=${method.lambda})`;
+    default:
+      throw new Error(`未知の正則化方法: ${method}`);
   }
 }
 

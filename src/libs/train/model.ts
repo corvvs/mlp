@@ -1,4 +1,7 @@
-import type { ActivationFunctionSingleArgumentMethod } from "../../types/af.js";
+import type {
+  ActivationFunctionSingleArgument,
+  ActivationFunctionSingleArgumentMethod,
+} from "../../types/af.js";
 import type { InitializationMethod } from "../../types/initialization.js";
 import type {
   HiddenLayerInfo,
@@ -6,6 +9,7 @@ import type {
   ScaleFactor,
 } from "../../types/layer.js";
 import type { ModelData } from "../../types/model.js";
+import type { OptimizationMethod } from "../../types/optimization.js";
 import type { RegularizationMethod } from "../../types/regularization.js";
 import { localSrand } from "../random.js";
 import { initializeParams } from "./initialization.js";
@@ -16,24 +20,17 @@ export function buildModelData(props: {
   maxEpochs: number;
   seed: number | null;
   batchSize?: number;
-  defaultActivationFunction: ActivationFunctionSingleArgumentMethod;
+  defaultActivationFunction: ActivationFunctionSingleArgument;
   regularization: RegularizationMethod | null;
   hiddenLayerSizes: number[];
+  optimization: OptimizationMethod;
 }): ModelData {
   const hiddenLayerSizes = props.hiddenLayerSizes ?? [24, 24];
 
   const hiddenLayers: HiddenLayerInfo[] = hiddenLayerSizes.map((size) => ({
     layerType: "hidden",
     size,
-    activationFunction:
-      props.defaultActivationFunction === "LeakyReLU"
-        ? {
-            method: props.defaultActivationFunction,
-            alpha: 0.01,
-          }
-        : {
-            method: props.defaultActivationFunction,
-          },
+    activationFunction: props.defaultActivationFunction,
   }));
 
   const initialization: InitializationMethod = {
@@ -84,9 +81,7 @@ export function buildModelData(props: {
       eps: 1e-9,
     },
 
-    optimization: makeOptimizationParam({
-      method: "Adam",
-    }),
+    optimization: props.optimization,
 
     ...(props.regularization ? { regularization: props.regularization } : {}),
 

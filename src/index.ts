@@ -5,8 +5,13 @@ import {
   defaultTestDataFilePath,
   defaultTrainDataFilePath,
 } from "./constants.js";
-import type { ActivationFunctionSingleArgumentMethod } from "./types/af.js";
+import type {
+  ActivationFunctionSingleArgument,
+  ActivationFunctionSingleArgumentMethod,
+} from "./types/af.js";
 import { parseRegularizationMethod } from "./libs/train/regularization.js";
+import { parseActivationFunction } from "./libs/train/af.js";
+import { parseOptimization } from "./libs/train/optimization.js";
 
 const yargsInstance = yargs(hideBin(process.argv))
   .scriptName("mlp")
@@ -66,14 +71,22 @@ const yargsInstance = yargs(hideBin(process.argv))
   })
   .option("default-activation", {
     type: "string",
-    enums: ["ReLU", "sigmoid", "tanh", "leakyReLU"],
-    description: "デフォルトの活性化関数",
+    description:
+      'デフォルトの活性化関数; "関数名,パラメータ..." の形式で指定; 活性化関数名は ReLU, LeakyReLU, Sigmoid, Tanh から選択',
     default: "ReLU",
   })
   .option("regularization", {
     type: "string",
-    description: '正則化; "正則化方式,パラメータ..." の形式で指定',
+    description:
+      '正則化; "正則化方式,パラメータ..." の形式で指定; 現在は L2 のみ対応',
     example: "L2,0.001",
+  })
+  .option("optimization", {
+    type: "string",
+    description:
+      '最適化手法; "手法名,パラメータ..." の形式で指定; 手法は SGD, MomentumSGD, AdaGrad, RMSProp, Adam から選択',
+    example: "Adam,0.001,0.9,0.999",
+    default: "SGD,0.01",
   })
   // predict 向けオプション
   .option("model", {
@@ -144,26 +157,13 @@ const yargsInstance = yargs(hideBin(process.argv))
           }
           return a.split(",").map((s) => parseInt(s, 10));
         })(argv.hiddenLayers);
-        const defaultActivationFunction: ActivationFunctionSingleArgumentMethod =
-          ((arg: string) => {
-            switch (arg.toLowerCase()) {
-              case "relu":
-                return "ReLU";
-              case "tanh":
-                return "tanh";
-              case "leakyrelu":
-                return "LeakyReLU";
-              case "sigmoid":
-                return "sigmoid";
-              default:
-                throw new Error(
-                  `不明な活性化関数: ${arg} (ReLU, sigmoid, tanh, LeakyReLU のいずれかを指定してください)`
-                );
-            }
-          })(argv.defaultActivation);
+        const defaultActivationFunction: ActivationFunctionSingleArgument =
+          parseActivationFunction(argv.defaultActivation);
+
         const regularization = parseRegularizationMethod(
           argv.regularization ?? null
         );
+        const optimization = parseOptimization(argv.optimization);
 
         command({
           dataFilePath: argv.data ?? defaultTrainDataFilePath,
@@ -171,9 +171,10 @@ const yargsInstance = yargs(hideBin(process.argv))
           epochs: argv.epochs,
           seed: argv.seed,
           batchSize: argv.batchSize,
-          defaultActivationFunction: defaultActivationFunction,
+          defaultActivationFunction,
           hiddenLayerSizes,
           regularization,
+          optimization,
         });
       } catch (err) {
         console.error("モデル訓練中にエラーが発生しました:", err);

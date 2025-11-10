@@ -24,6 +24,119 @@ import {
   zeroVec,
 } from "../arithmetics.js";
 
+export function parseOptimization(optimizationStr: string): OptimizationMethod {
+  const parts = optimizationStr.split(",");
+  const method = parts[0];
+  switch (method.toLowerCase()) {
+    case "sgd": {
+      const opt: PartialOptSGD = { method: "SGD" };
+      if (parts.length >= 2) {
+        const learningRate = parseFloat(parts[1]);
+        if (isNaN(learningRate) || learningRate <= 0) {
+          throw new Error(`不正なSGD学習率: ${parts[1]}`);
+        }
+        opt.learningRate = learningRate;
+      }
+      return makeSGDParam(opt);
+    }
+    case "momentumsgd": {
+      const opt: PartialOptMomentumSGD = { method: "MomentumSGD" };
+      if (parts.length >= 2) {
+        const learningRate = parseFloat(parts[1]);
+        if (isNaN(learningRate) || learningRate <= 0) {
+          throw new Error(`不正なMomentumSGD学習率: ${parts[1]}`);
+        }
+        if (parts.length >= 3) {
+          const alpha = parseFloat(parts[2]);
+          if (isNaN(alpha) || alpha < 0 || alpha >= 1) {
+            throw new Error(`不正なMomentumSGDアルファ値: ${parts[2]}`);
+          }
+          opt.alpha = alpha;
+        }
+        opt.learningRate = learningRate;
+      }
+      return makeMomentumSGDParam(opt);
+    }
+    case "adagrad": {
+      const opt: PartialOptAdaGrad = { method: "AdaGrad" };
+      if (parts.length >= 2) {
+        const learningRate = parseFloat(parts[1]);
+        if (isNaN(learningRate) || learningRate <= 0) {
+          throw new Error(`不正なAdaGrad学習率: ${parts[1]}`);
+        }
+        if (parts.length >= 3) {
+          const eps = parseFloat(parts[2]);
+          if (isNaN(eps) || eps <= 0) {
+            throw new Error(`不正なAdaGradイプシロン値: ${parts[2]}`);
+          }
+          opt.eps = eps;
+        }
+        opt.learningRate = learningRate;
+      }
+      return makeAdaGradParam(opt);
+    }
+    case "rmsprop": {
+      const opt: PartialOptRMSProp = { method: "RMSProp" };
+      if (parts.length >= 2) {
+        const rho = parseFloat(parts[1]);
+        if (isNaN(rho) || rho < 0 || rho >= 1) {
+          throw new Error(`不正なRMSPropρ値: ${parts[1]}`);
+        }
+        if (parts.length >= 3) {
+          const learningRate = parseFloat(parts[2]);
+          if (isNaN(learningRate) || learningRate <= 0) {
+            throw new Error(`不正なRMSProp学習率: ${parts[2]}`);
+          }
+          opt.learningRate = learningRate;
+        }
+        if (parts.length >= 4) {
+          const eps = parseFloat(parts[3]);
+          if (isNaN(eps) || eps <= 0) {
+            throw new Error(`不正なRMSPropイプシロン値: ${parts[3]}`);
+          }
+          opt.eps = eps;
+        }
+        opt.rho = rho;
+      }
+      return makeRMSPropParam(opt);
+    }
+    case "adam": {
+      const opt: PartialOptAdam = { method: "Adam" };
+      if (parts.length >= 2) {
+        const learningRate = parseFloat(parts[1]);
+        if (isNaN(learningRate) || learningRate <= 0) {
+          throw new Error(`不正なAdam学習率: ${parts[1]}`);
+        }
+        if (parts.length >= 3) {
+          const beta1 = parseFloat(parts[2]);
+          if (isNaN(beta1) || beta1 < 0 || beta1 >= 1) {
+            throw new Error(`不正なAdamβ1値: ${parts[2]}`);
+          }
+          opt.beta1 = beta1;
+        }
+        if (parts.length >= 4) {
+          const beta2 = parseFloat(parts[3]);
+          if (isNaN(beta2) || beta2 < 0 || beta2 >= 1) {
+            throw new Error(`不正なAdamβ2値: ${parts[3]}`);
+          }
+          opt.beta2 = beta2;
+        }
+        if (parts.length >= 5) {
+          const eps = parseFloat(parts[4]);
+          if (isNaN(eps) || eps <= 0) {
+            throw new Error(`不正なAdamイプシロン値: ${parts[4]}`);
+          }
+          opt.eps = eps;
+        }
+        opt.learningRate = learningRate;
+      }
+      return makeAdamParam(opt);
+    }
+    default:
+      throw new Error(`未知の最適化方法: ${method}`);
+  }
+}
+
 export type OpzimizationFunction = (
   W: number[][],
   b: number[],
