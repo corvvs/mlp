@@ -16,6 +16,7 @@ export type ModelData = {
 
   // 広義のハイパーパラメータ
   seed: number; // 乱数シード
+  splitRatio: number; // データ分割比率 (train: splitRatio, validation: 1 - splitRatio)
   maxEpochs: number; // 最大エポック数; 正の整数
   batchSize: number; // バッチサイズ; 非負整数; 0の場合は全データ
   layerNumber: number; // 入力層・出力層を含む層の数; 2未満の場合は入力エラー

@@ -3,6 +3,34 @@ import type { LayerInfo } from "../../types/layer.js";
 import type { LayerParameter } from "../../types/model.js";
 import { localRandom, normalRandom } from "../random.js";
 
+export function parseInitializationMethod(str: string): InitializationMethod {
+  const parts = str.split(",");
+  const m = parts[0];
+  const dist = parts[1] ?? "uniform";
+  switch (m.toLowerCase()) {
+    case "he": {
+      if (dist !== "uniform" && dist !== "normal") {
+        throw new Error(`不正なHe初期化分布: ${dist}`);
+      }
+      return {
+        method: "He",
+        dist,
+      };
+    }
+    case "xavier": {
+      if (dist !== "uniform" && dist !== "normal") {
+        throw new Error(`不正なXavier初期化分布: ${dist}`);
+      }
+      return {
+        method: "Xavier",
+        dist,
+      };
+    }
+    default:
+      throw new Error(`未知の初期化手法: ${m}`);
+  }
+}
+
 function getRandFunc(
   initialization: InitializationMethod
 ): (fanIn: number, fanOut: number) => number {

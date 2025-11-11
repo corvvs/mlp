@@ -8,6 +8,59 @@ import type {
 import type { RegularizationFunction } from "../../types/regularization.js";
 import { subVector } from "../arithmetics.js";
 
+export function parseLossFunction(str: string): LossFunction {
+  const parts = str.split(",");
+  const method = parts[0];
+  switch (method.toLowerCase()) {
+    case "cce": {
+      const f: LossFunction = {
+        method: "CCE",
+        eps: 1e-9,
+      };
+      if (parts.length >= 2) {
+        const eps = parseFloat(parts[1]);
+        if (isNaN(eps) || eps <= 0 || eps >= 0.5) {
+          throw new Error(`不正なCCE損失関数パラメータ: ${parts[1]}`);
+        }
+        f.eps = eps;
+      }
+      return f;
+    }
+    case "weightedbce": {
+      const f: LossFunction = {
+        method: "WeightedBCE",
+        posWeight: 1.0,
+        negWeight: 1.0,
+        eps: 1e-9,
+      };
+      if (parts.length >= 2) {
+        const posWeight = parseFloat(parts[1]);
+        if (isNaN(posWeight) || posWeight <= 0) {
+          throw new Error(`不正なWeightedBCE損失関数パラメータ: ${parts[1]}`);
+        }
+        f.posWeight = posWeight;
+      }
+      if (parts.length >= 3) {
+        const negWeight = parseFloat(parts[2]);
+        if (isNaN(negWeight) || negWeight <= 0) {
+          throw new Error(`不正なWeightedBCE損失関数パラメータ: ${parts[2]}`);
+        }
+        f.negWeight = negWeight;
+      }
+      if (parts.length >= 4) {
+        const eps = parseFloat(parts[3]);
+        if (isNaN(eps) || eps <= 0 || eps >= 0.5) {
+          throw new Error(`不正なWeightedBCE損失関数パラメータ: ${parts[3]}`);
+        }
+        f.eps = eps;
+      }
+      return f;
+    }
+    default:
+      throw new Error(`未知の損失関数: ${method}`);
+  }
+}
+
 export function getLossFunctionActual(
   lossFunction: LossFunction
 ): LossFunctionActual {

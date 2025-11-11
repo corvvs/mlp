@@ -8,6 +8,7 @@ import type {
   LayerInfo,
   ScaleFactor,
 } from "../../types/layer.js";
+import type { LossFunction } from "../../types/loss.js";
 import type { ModelData } from "../../types/model.js";
 import type { OptimizationMethod } from "../../types/optimization.js";
 import type { RegularizationMethod } from "../../types/regularization.js";
@@ -19,9 +20,12 @@ export function buildModelData(props: {
   scaleFactors: (ScaleFactor | null)[];
   maxEpochs: number;
   seed: number | null;
+  splitRatio: number;
   batchSize?: number;
+  initialization: InitializationMethod;
   defaultActivationFunction: ActivationFunctionSingleArgument;
   regularization: RegularizationMethod | null;
+  lossFunction: LossFunction;
   hiddenLayerSizes: number[];
   optimization: OptimizationMethod;
 }): ModelData {
@@ -33,10 +37,7 @@ export function buildModelData(props: {
     activationFunction: props.defaultActivationFunction,
   }));
 
-  const initialization: InitializationMethod = {
-    method: "Xavier",
-    dist: "uniform",
-  };
+  const initialization = props.initialization;
 
   const actualInputSize = props.scaleFactors.length - 1; // Answer列を除く
 
@@ -69,6 +70,7 @@ export function buildModelData(props: {
   return {
     version: "1.0.0",
     maxEpochs: props.maxEpochs,
+    splitRatio: props.splitRatio,
     seed,
 
     batchSize: props.batchSize ?? 8,
@@ -76,10 +78,7 @@ export function buildModelData(props: {
     layers,
     initialization,
 
-    lossFunction: {
-      method: "CCE",
-      eps: 1e-9,
-    },
+    lossFunction: props.lossFunction,
 
     optimization: props.optimization,
 

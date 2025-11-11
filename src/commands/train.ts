@@ -19,21 +19,25 @@ import {
 } from "../libs/train/regularization.js";
 import type { ModelData } from "../types/model.js";
 import type { TrainingProgress } from "../types/data.js";
-import type { EpochMetrics } from "../types/loss.js";
+import type { EpochMetrics, LossFunction } from "../types/loss.js";
 import type { ActivationFunctionSingleArgument } from "../types/af.js";
 import { defaultModelFilePath } from "../constants.js";
 import { shuffleArray } from "../libs/random.js";
 import type { RegularizationMethod } from "../types/regularization.js";
 import type { OptimizationMethod } from "../types/optimization.js";
+import type { InitializationMethod } from "../types/initialization.js";
 
 export function command(props: {
   dataFilePath: string;
   modelOutFilePath: string;
   epochs: number;
+  splitRatio: number;
   seed?: number;
   batchSize: number;
+  initialization: InitializationMethod;
   defaultActivationFunction: ActivationFunctionSingleArgument;
   hiddenLayerSizes: number[];
+  lossFunction: LossFunction;
   regularization: RegularizationMethod | null;
   optimization: OptimizationMethod;
 }) {
@@ -42,7 +46,10 @@ export function command(props: {
   // データファイルの読み取り
   const dataFilePath = props.dataFilePath;
   const csvRows = readCSVFile(dataFilePath);
-  const { a: trainDataRaw, b: valDataRaw } = splitData(csvRows, 0.8);
+  const { a: trainDataRaw, b: valDataRaw } = splitData(
+    csvRows,
+    props.splitRatio
+  );
 
   // 前処理: Answer列以外の標準化
   console.log("Standardizing Input...");
@@ -53,30 +60,24 @@ export function command(props: {
     standardizedResult.scaleFactors
   );
 
-  // // デバッグ用: 標準化後のデータをファイルに書き出す
-  // writeCSVFile(
-  //   "debug.csv",
-  //   trainData.map((row) => row.map((v) => sprintf("%1.4f", v)))
-  // );
-
   // 初期モデルの構築
   const { seed, batchSize } = props;
   const model = buildModelData({
     maxEpochs: props.epochs,
     seed: seed ?? null,
     batchSize: batchSize ?? null,
+    splitRatio: props.splitRatio,
     scaleFactors: standardizedResult.scaleFactors,
+    initialization: props.initialization,
     defaultActivationFunction: props.defaultActivationFunction,
     hiddenLayerSizes: props.hiddenLayerSizes,
+    lossFunction: props.lossFunction,
     regularization: props.regularization,
     optimization: props.optimization,
   });
   console.log("Initialized Model:");
   printModel(model);
   console.log();
-
-  // とりあえず書き出してみる
-  // writeJSONFile("debug.json", model);
 
   const actualLossFunction = getLossFunctionActual(model.lossFunction);
   const actualOptimizationFunction = getOptimizationFunctionActual(
@@ -241,7 +242,7 @@ export function command(props: {
       latestGoodModel.model = JSON.parse(JSON.stringify(model));
       latestGoodModel.epoch = epoch + 1;
     }
-    if (valMetricsImprovement.loss > -0.0001) {
+    if (valMetricsImprovement.loss > -0.00001) {
       valLossIncreaseCount++;
       if (
         valLossIncreaseCount >= 10 ||
@@ -256,6 +257,7 @@ export function command(props: {
     }
   }
 
+  // 学習終了
   console.log(
     `訓練が完了しました: Best Score: ${latestGoodModel.score} at epoch ${latestGoodModel.epoch}`
   );
