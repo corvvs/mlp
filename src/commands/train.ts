@@ -26,6 +26,8 @@ import { shuffleArray } from "../libs/random.js";
 import type { RegularizationMethod } from "../types/regularization.js";
 import type { OptimizationMethod } from "../types/optimization.js";
 import type { InitializationMethod } from "../types/initialization.js";
+import type { EarlyStopping } from "../types/es.js";
+import { getEarlyStoppingActual } from "../libs/train/es.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -40,6 +42,7 @@ export function command(props: {
   lossFunction: LossFunction;
   regularization: RegularizationMethod | null;
   optimization: OptimizationMethod;
+  earlyStopping: EarlyStopping | null;
 }) {
   console.log("[Train]");
 
@@ -74,6 +77,7 @@ export function command(props: {
     lossFunction: props.lossFunction,
     regularization: props.regularization,
     optimization: props.optimization,
+    earlyStopping: props.earlyStopping,
   });
   console.log("Initialized Model:");
   printModel(model);
@@ -89,6 +93,9 @@ export function command(props: {
   );
   const actualRegularizationGradientFunction =
     getRegularizationGradientFunctionActual(model.regularization);
+  const actualEarlyStoppingFunction = getEarlyStoppingActual(
+    model.earlyStopping ?? null
+  );
   const fullSize = trainData.length;
 
   const progress: TrainingProgress[] = [];
@@ -236,25 +243,56 @@ export function command(props: {
       valAccuracy,
     });
 
-    const scoreToMinimize = valMetrics.loss;
-    if (scoreToMinimize < latestGoodModel.score) {
-      latestGoodModel.score = scoreToMinimize;
-      latestGoodModel.model = JSON.parse(JSON.stringify(model));
-      latestGoodModel.epoch = epoch + 1;
-    }
-    if (valMetricsImprovement.loss > -0.00001) {
-      valLossIncreaseCount++;
-      if (
-        valLossIncreaseCount >= 10 ||
-        scoreToMinimize > 2 * latestGoodModel.score ||
-        latestGoodModel.epoch < epoch - 100
-      ) {
-        console.log("Stopping.");
+    // [早期終了]
+    // 「早期終了指標」を1つ指定し, その改善を監視する.
+    //
+    // 指定可能な早期終了指標(case-insensitive):
+    // - 評価損失     loss
+    // - 評価精度     accuracy
+    // - 評価適合率   precision
+    // - 評価再現率   recall
+    // - 評価特異度   specificity
+    // - 評価F1スコア f1Score
+    //
+    // 終了条件:
+    // - 「早期終了指標」が最良値より改善しないエポックが一定以上続いたとき
+    // - 「早期終了指標」が最良値の2倍以上に悪化したとき
+    //
+    // ハイパーパラメータとして指定可能な要素:
+    // - 早期終了指標             early-stopping-metric
+    // - 改善しないエポック数の閾値 early-stopping-patience
+    if (actualEarlyStoppingFunction) {
+      const esMessage = actualEarlyStoppingFunction(
+        model,
+        latestGoodModel,
+        epoch + 1,
+        valMetrics
+      );
+      if (esMessage) {
+        console.log(esMessage);
         break;
       }
-    } else {
-      valLossIncreaseCount = 0;
     }
+
+    // const scoreToMinimize = valMetrics.loss;
+    // if (scoreToMinimize < latestGoodModel.score) {
+    //   latestGoodModel.score = scoreToMinimize;
+    //   latestGoodModel.model = JSON.parse(JSON.stringify(model));
+    //   latestGoodModel.epoch = epoch + 1;
+    // }
+    // if (valMetricsImprovement.loss > -0.00001) {
+    //   valLossIncreaseCount++;
+    //   if (
+    //     valLossIncreaseCount >= 10 ||
+    //     scoreToMinimize > 2 * latestGoodModel.score ||
+    //     latestGoodModel.epoch < epoch - 100
+    //   ) {
+    //     console.log("Stopping.");
+    //     break;
+    //   }
+    // } else {
+    //   valLossIncreaseCount = 0;
+    // }
   }
 
   // 学習終了

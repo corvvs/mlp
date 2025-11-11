@@ -1,7 +1,5 @@
-import type {
-  ActivationFunction,
-  ActivationFunctionSingleArgument,
-} from "../../types/af.js";
+import type { ActivationFunction } from "../../types/af.js";
+import type { EarlyStopping } from "../../types/es.js";
 import type { InitializationMethod } from "../../types/initialization.js";
 import type { LayerInfo } from "../../types/layer.js";
 import type { ModelData } from "../../types/model.js";
@@ -32,6 +30,7 @@ export function printModel(model: ModelData): void {
     "Optimization Method:",
     outOptimizationMethod(model.optimization)
   );
+  console.log("Early Stopping:", outEarlyStopping(model.earlyStopping ?? null));
 }
 
 function outLayer(layer: LayerInfo): string {
@@ -97,4 +96,11 @@ function outOptimizationMethod(method: OptimizationMethod): string {
     default:
       throw new Error(`未知の最適化方法: ${method}`);
   }
+}
+
+export function outEarlyStopping(args: EarlyStopping | null): string {
+  if (!args) {
+    return "Disabled";
+  }
+  return `Enabled (metric=${args.metric}, patience=${args.patience})`;
 }

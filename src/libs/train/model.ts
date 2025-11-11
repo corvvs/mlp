@@ -2,6 +2,7 @@ import type {
   ActivationFunctionSingleArgument,
   ActivationFunctionSingleArgumentMethod,
 } from "../../types/af.js";
+import type { EarlyStopping } from "../../types/es.js";
 import type { InitializationMethod } from "../../types/initialization.js";
 import type {
   HiddenLayerInfo,
@@ -28,6 +29,7 @@ export function buildModelData(props: {
   lossFunction: LossFunction;
   hiddenLayerSizes: number[];
   optimization: OptimizationMethod;
+  earlyStopping: EarlyStopping | null;
 }): ModelData {
   const hiddenLayerSizes = props.hiddenLayerSizes ?? [24, 24];
 
@@ -83,6 +85,7 @@ export function buildModelData(props: {
     optimization: props.optimization,
 
     ...(props.regularization ? { regularization: props.regularization } : {}),
+    ...(props.earlyStopping ? { earlyStopping: props.earlyStopping } : {}),
 
     bestEpoch: 0,
     trainMetrics: [],

@@ -11,6 +11,7 @@ import { parseActivationFunction } from "./libs/train/af.js";
 import { parseOptimization } from "./libs/train/optimization.js";
 import { parseLossFunction } from "./libs/train/loss.js";
 import { parseInitializationMethod } from "./libs/train/initialization.js";
+import { parseEarlyStopping } from "./libs/train/es.js";
 
 const yargsInstance = yargs(hideBin(process.argv))
   .scriptName("mlp")
@@ -99,6 +100,17 @@ const yargsInstance = yargs(hideBin(process.argv))
     example: "Adam,0.001,0.9,0.999",
     default: "SGD,0.01",
   })
+  .option("early-stopping-metric", {
+    type: "string",
+    description:
+      "Early Stopping の評価指標; accuracy, loss, precision, recall, f1-score から選択",
+    default: "loss",
+  })
+  .option("early-stopping-patience", {
+    type: "number",
+    description: "Early Stopping の patience (非負整数)",
+    default: 10,
+  })
   // predict 向けオプション
   .option("model", {
     type: "string",
@@ -176,6 +188,10 @@ const yargsInstance = yargs(hideBin(process.argv))
           argv.regularization ?? null
         );
         const optimization = parseOptimization(argv.optimization);
+        const earlyStopping = parseEarlyStopping({
+          metric: argv.earlyStoppingMetric,
+          patience: argv.earlyStoppingPatience,
+        });
 
         command({
           dataFilePath: argv.data ?? defaultTrainDataFilePath,
@@ -190,6 +206,7 @@ const yargsInstance = yargs(hideBin(process.argv))
           lossFunction,
           regularization,
           optimization,
+          earlyStopping,
         });
       } catch (err) {
         console.error("モデル訓練中にエラーが発生しました:", err);

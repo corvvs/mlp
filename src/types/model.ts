@@ -1,3 +1,4 @@
+import type { EarlyStopping } from "./es.js";
 import type { InitializationMethod } from "./initialization.js";
 import type { LayerInfo } from "./layer.js";
 import type { EpochMetrics, LossFunction } from "./loss.js";
@@ -25,6 +26,7 @@ export type ModelData = {
   lossFunction: LossFunction; // 損失関数; BCE(Binary Cross Entropy) 固定
   regularization?: RegularizationMethod; // 正則化; しない場合は省略する
   optimization: OptimizationMethod; // 最適化方法
+  earlyStopping?: EarlyStopping;
 
   // [学習の結果の情報]
   bestEpoch: number; // 最良モデルが得られたエポック数; 1始まり
