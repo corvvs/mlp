@@ -1,8 +1,11 @@
 import { sprintf } from "sprintf-js";
 import { readCSVFile, writeCSVFile } from "../libs/io.js";
-import { getShuffledPermutation } from "../libs/random.js";
 import { defaultPreprocDataFilePath } from "../constants.js";
-import { splitData } from "../libs/split.js";
+import {
+  splitData,
+  stratifiedSpllitData,
+  stratifiedSplitData,
+} from "../libs/split.js";
 
 export function command(props: {
   dataFilePath: string | undefined;
@@ -15,7 +18,11 @@ export function command(props: {
   console.log(`データファイル ${actualDataFilePath} を読み込みました`);
 
   // rows を train と test に ratio : (1 - ratio) の比率で分割する
-  const { a: trainData, b: testData } = splitData(rows, props.ratio);
+  const { a: trainData, b: testData } = stratifiedSplitData(
+    rows,
+    (row) => row[0],
+    props.ratio
+  );
 
   console.log(
     sprintf(

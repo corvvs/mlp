@@ -5,6 +5,13 @@ import {
   defaultTestDataFilePath,
   defaultTrainDataFilePath,
 } from "./constants.js";
+import type { ActivationFunctionSingleArgument } from "./types/af.js";
+import { parseRegularizationMethod } from "./libs/train/regularization.js";
+import { parseActivationFunction } from "./libs/train/af.js";
+import { parseOptimization } from "./libs/train/optimization.js";
+import { parseLossFunction } from "./libs/train/loss.js";
+import { parseInitializationMethod } from "./libs/train/initialization.js";
+import { parseEarlyStopping } from "./libs/train/es.js";
 
 const yargsInstance = yargs(hideBin(process.argv))
   .scriptName("mlp")
@@ -18,9 +25,9 @@ const yargsInstance = yargs(hideBin(process.argv))
     requiresArg: false,
   })
   // split 向けオプション
-  .option("ratio", {
+  .option("split-ratio", {
     type: "number",
-    description: "分割比率 (train:ratio, test:1-ratio)",
+    description: "分割比率 (train: split-ratio, test:1 - split-ratio)",
     default: 0.8,
   })
   .option("out-train", {
@@ -39,6 +46,75 @@ const yargsInstance = yargs(hideBin(process.argv))
   .option("out-model", {
     type: "string",
     description: "モデル出力ファイルのパス",
+    default: defaultModelFilePath,
+    requiresArg: false,
+  })
+  .option("epochs", {
+    type: "number",
+    description: "エポック数",
+    default: 5000,
+  })
+  .option("batch-size", {
+    type: "number",
+    description: "バッチサイズ",
+    default: 32,
+  })
+  .option("seed", {
+    type: "number",
+    description: "乱数シード",
+    default: 1234,
+  })
+  .option("hidden-layers", {
+    type: "string",
+    description: "隠れ層の構成(カンマ区切りのユニット数)",
+    default: "24,24",
+  })
+  .option("initialization", {
+    type: "string",
+    description:
+      'パラメータ初期化手法; "手法名,分布" の形式で指定; 手法名は Xavier, He から選択, 分布は uniform, normal から選択',
+    default: "he,normal",
+  })
+  .option("default-activation", {
+    type: "string",
+    description:
+      'デフォルトの活性化関数; "関数名,パラメータ..." の形式で指定; 活性化関数名は ReLU, LeakyReLU, Sigmoid, Tanh から選択',
+    default: "ReLU",
+  })
+  .option("loss", {
+    type: "string",
+    description:
+      '損失関数; "関数名,パラメータ..." の形式で指定; 関数名は CCE, WeightedCCE から選択',
+    default: "CCE,1e-9",
+  })
+  .option("regularization", {
+    type: "string",
+    description:
+      '正則化; "正則化方式,パラメータ..." の形式で指定; 現在は L2 のみ対応',
+    example: "L2,0.001",
+  })
+  .option("optimization", {
+    type: "string",
+    description:
+      '最適化手法; "手法名,パラメータ..." の形式で指定; 手法は SGD, MomentumSGD, AdaGrad, RMSProp, Adam から選択',
+    example: "Adam,0.001,0.9,0.999",
+    default: "SGD,0.01",
+  })
+  .option("early-stopping-metric", {
+    type: "string",
+    description:
+      "Early Stopping の評価指標; accuracy, loss, precision, recall, f1-score から選択",
+    default: "loss",
+  })
+  .option("early-stopping-patience", {
+    type: "number",
+    description: "Early Stopping の patience (非負整数)",
+    default: 10,
+  })
+  // predict 向けオプション
+  .option("model", {
+    type: "string",
+    description: "モデルファイルのパス",
     default: defaultModelFilePath,
     requiresArg: false,
   })
@@ -77,7 +153,7 @@ const yargsInstance = yargs(hideBin(process.argv))
       try {
         command({
           dataFilePath: argv.data,
-          ratio: argv.ratio,
+          ratio: argv.splitRatio,
           outTrainDataFilePath: argv.outTrain,
           outTestDataFilePath: argv.outTest,
         });
@@ -94,12 +170,66 @@ const yargsInstance = yargs(hideBin(process.argv))
     async (argv) => {
       const { command } = await import("./commands/train.js");
       try {
+        const initialization = parseInitializationMethod(argv.initialization);
+        const hiddenLayerSizes = ((arg: string) => {
+          const a = arg.trim();
+          if (a.length === 0) {
+            return [];
+          }
+          const m = a.match(/^(\d+)(,\d+)*$/);
+          if (!m) {
+            throw new Error(
+              `不正な隠れ層の指定: ${arg} (カンマ区切りの正の整数で指定してください)`
+            );
+          }
+          return a.split(",").map((s) => parseInt(s, 10));
+        })(argv.hiddenLayers);
+        const defaultActivationFunction: ActivationFunctionSingleArgument =
+          parseActivationFunction(argv.defaultActivation);
+        const lossFunction = parseLossFunction(argv.loss);
+        const regularization = parseRegularizationMethod(
+          argv.regularization ?? null
+        );
+        const optimization = parseOptimization(argv.optimization);
+        const earlyStopping = parseEarlyStopping({
+          metric: argv.earlyStoppingMetric,
+          patience: argv.earlyStoppingPatience,
+        });
+
         command({
           dataFilePath: argv.data ?? defaultTrainDataFilePath,
+          splitRatio: argv.splitRatio,
           modelOutFilePath: argv.outModel,
+          epochs: argv.epochs,
+          seed: argv.seed,
+          batchSize: argv.batchSize,
+          initialization,
+          defaultActivationFunction,
+          hiddenLayerSizes,
+          lossFunction,
+          regularization,
+          optimization,
+          earlyStopping,
         });
       } catch (err) {
         console.error("モデル訓練中にエラーが発生しました:", err);
+        process.exit(1);
+      }
+    }
+  )
+  .command(
+    "predict",
+    "予測を実行します",
+    () => {},
+    async (argv) => {
+      const { command } = await import("./commands/predict.js");
+      try {
+        command({
+          dataFilePath: argv.data ?? defaultTestDataFilePath,
+          modelFilePath: argv.model ?? defaultModelFilePath,
+        });
+      } catch (err) {
+        console.error("予測中にエラーが発生しました:", err);
         process.exit(1);
       }
     }

@@ -1,19 +1,45 @@
+import type {
+  ActivationFunctionSingleArgument,
+  ActivationFunctionSingleArgumentMethod,
+} from "../../types/af.js";
+import type { EarlyStopping } from "../../types/es.js";
 import type { InitializationMethod } from "../../types/initialization.js";
-import type { LayerInfo, ScaleFactor } from "../../types/layer.js";
+import type {
+  HiddenLayerInfo,
+  LayerInfo,
+  ScaleFactor,
+} from "../../types/layer.js";
+import type { LossFunction } from "../../types/loss.js";
 import type { ModelData } from "../../types/model.js";
+import type { OptimizationMethod } from "../../types/optimization.js";
+import type { RegularizationMethod } from "../../types/regularization.js";
 import { localSrand } from "../random.js";
 import { initializeParams } from "./initialization.js";
 import { makeOptimizationParam } from "./optimization.js";
 
 export function buildModelData(props: {
   scaleFactors: (ScaleFactor | null)[];
-  seed?: number;
+  maxEpochs: number;
+  seed: number | null;
+  splitRatio: number;
   batchSize?: number;
+  initialization: InitializationMethod;
+  defaultActivationFunction: ActivationFunctionSingleArgument;
+  regularization: RegularizationMethod | null;
+  lossFunction: LossFunction;
+  hiddenLayerSizes: number[];
+  optimization: OptimizationMethod;
+  earlyStopping: EarlyStopping | null;
 }): ModelData {
-  const initialization: InitializationMethod = {
-    method: "Xavier",
-    dist: "uniform",
-  };
+  const hiddenLayerSizes = props.hiddenLayerSizes ?? [24, 24];
+
+  const hiddenLayers: HiddenLayerInfo[] = hiddenLayerSizes.map((size) => ({
+    layerType: "hidden",
+    size,
+    activationFunction: props.defaultActivationFunction,
+  }));
+
+  const initialization = props.initialization;
 
   const actualInputSize = props.scaleFactors.length - 1; // Answer列を除く
 
@@ -25,56 +51,7 @@ export function buildModelData(props: {
       scaleFactors: props.scaleFactors,
     },
     // 隠れ層
-
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
-    {
-      layerType: "hidden",
-      size: 8,
-      activationFunction: {
-        method: "ReLU",
-      },
-    },
+    ...hiddenLayers,
 
     {
       // 出力層
@@ -94,27 +71,25 @@ export function buildModelData(props: {
 
   return {
     version: "1.0.0",
+    maxEpochs: props.maxEpochs,
+    splitRatio: props.splitRatio,
     seed,
 
-    batchSize: props.batchSize ?? 32,
+    batchSize: props.batchSize ?? 8,
     layerNumber: layers.length,
     layers,
     initialization,
 
-    lossFunction: {
-      method: "BCE",
-      eps: 1e-9,
-    },
+    lossFunction: props.lossFunction,
 
-    optimization: makeOptimizationParam({
-      method: "Adam",
-    }),
+    optimization: props.optimization,
 
-    regularization: {
-      method: "L2",
-      lambda: 1e-4,
-    },
+    ...(props.regularization ? { regularization: props.regularization } : {}),
+    ...(props.earlyStopping ? { earlyStopping: props.earlyStopping } : {}),
 
+    bestEpoch: 0,
+    trainMetrics: [],
+    valMetrics: [],
     parameters,
   };
 }

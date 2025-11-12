@@ -18,7 +18,7 @@ let z1: number;
 export function normalRandom(mean: number, stddev: number): number {
   // Box-Muller法
   if (normalState === 0) {
-    const u1 = localRandom();
+    const u1 = Math.max(localRandom(), 1e-10); // log(0)防止
     const u2 = localRandom();
     z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
     z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
@@ -43,4 +43,14 @@ export function getShuffledPermutation(n: number): number[] {
     [indices[i], indices[j]] = [indices[j], indices[i]];
   }
   return indices;
+}
+
+export function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = array.slice();
+  const n = shuffled.length;
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(localRandom() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }

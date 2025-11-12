@@ -5,6 +5,34 @@ import type {
 } from "../../types/regularization.js";
 import { mulMatrixByScalar } from "../arithmetics.js";
 
+export function parseRegularizationMethod(
+  str: string | null
+): RegularizationMethod | null {
+  if (!str) {
+    return null;
+  }
+  const parts = str.split(",");
+  const method = parts[0];
+  switch (method) {
+    case "L2": {
+      const f: RegularizationMethod = {
+        method: "L2",
+        lambda: 0.01,
+      };
+      if (parts.length >= 2) {
+        const lambda = parseFloat(parts[1]);
+        if (isNaN(lambda) || lambda < 0) {
+          throw new Error(`不正なL2正則化パラメータ: ${parts[1]}`);
+        }
+        f.lambda = lambda;
+      }
+      return f;
+    }
+    default:
+      throw new Error(`未知の正則化方式: ${method}`);
+  }
+}
+
 export function getRegularizationFunctionActual(
   regularization?: RegularizationMethod
 ): RegularizationFunction | null {
@@ -39,8 +67,8 @@ export function getRegularizationGradientFunctionActual(
   }
   switch (regularization.method) {
     case "L2":
-      return (wMat: number[][], B: number) =>
-        mulMatrixByScalar(wMat, regularization.lambda / B);
+      return (wMat: number[][]) =>
+        mulMatrixByScalar(wMat, regularization.lambda);
     default:
       throw new Error(`未知の正則化タイプ: ${regularization.method}`);
   }
