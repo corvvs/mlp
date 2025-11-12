@@ -1,7 +1,7 @@
 import type {
   LossFunction,
   LossFunctionActual,
-  EpochMetrics as EpochMetrics,
+  EpochMetrics,
   EpochMetricsImprovement,
   DerivativeLossFunctionActual,
 } from "../../types/loss.js";

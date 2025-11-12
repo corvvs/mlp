@@ -8,7 +8,6 @@ import type { TrainingProgress } from "../types/data.js";
  */
 export function readCSVFile(path: string): string[][] {
   const data = readFileSync(path, "utf-8");
-  //   console.log(`データファイル ${path ?? "stdin"} を読み込みました`);
 
   // dataを見出しなしのCSVと考え, パースする
   const rows = data
@@ -29,17 +28,20 @@ export function readCSVFile(path: string): string[][] {
     }
   }
 
+  console.log(`CSVファイル ${path} を読み込みました`);
   return rows;
 }
 
 export function writeCSVFile(path: string, rows: string[][]) {
   const data = rows.map((row) => row.join(",") + "\n").join("");
   writeFileSync(path, data, "utf-8");
+  console.log(`CSVファイル ${path} を書き出しました`);
 }
 
 export function writeJSONFile(path: string, obj: any) {
   const data = JSON.stringify(obj, null, 2);
   writeFileSync(path, data, "utf-8");
+  console.log(`JSONファイル ${path} を書き出しました`);
 }
 
 export function writeGNUPlotFile(path: string, data: TrainingProgress[]) {
@@ -53,5 +55,7 @@ export function writeGNUPlotFile(path: string, data: TrainingProgress[]) {
 
 export function readJSONFile<T>(path: string): T {
   const data = readFileSync(path, "utf-8");
-  return JSON.parse(data) as T;
+  const d = JSON.parse(data) as T;
+  console.log(`JSONファイル ${path} を読み込みました`);
+  return d;
 }

@@ -5,7 +5,6 @@ import {
   hadamardVector,
   mulTMatMat,
   mulTMatVec,
-  subVector,
 } from "../arithmetics.js";
 import { getDerivativeActivationFunctionActual } from "./af.js";
 import { getDerivativeLossFunctionActual } from "./loss.js";
@@ -79,16 +78,15 @@ export function backwardPass(props: {
     // console.log(`パラメータの誤差ベクトルを計算します: ${k}`);
     const w = model.parameters[k - 1].weights;
     const prevLayer = model.layers[k - 1];
-    let dW: number[][] = Array.from({ length: currLayer.size }, () =>
+    const dW: number[][] = Array.from({ length: currLayer.size }, () =>
       Array(prevLayer.size).fill(0)
     );
-    let dB: number[] = new Array(currLayer.size).fill(0);
+    const dB: number[] = new Array(currLayer.size).fill(0);
     const aMatPrev = aMats[k - 1];
     const dMat = dMats[k];
-    dMat.map((dVec, l) => {
+    dMat.forEach((dVec, l) => {
       // 重みの誤差行列
-      let dWMat = mulTMatMat([dVec], [aMatPrev[l]]);
-
+      const dWMat = mulTMatMat([dVec], [aMatPrev[l]]);
       const dBMat = dVec;
       for (let i = 0; i < currLayer.size; i++) {
         const dWi = dW[i];
@@ -112,7 +110,6 @@ export function backwardPass(props: {
     }
 
     const b = model.parameters[k - 1].biases;
-    // console.log(`層 ${k} のパラメータ更新を行います`);
 
     const gradientNorm = Math.sqrt(
       dW.flat().reduce((sum, x) => sum + x * x, 0) +
