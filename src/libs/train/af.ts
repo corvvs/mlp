@@ -2,6 +2,7 @@ import type {
   ActivatationFunctionActual,
   ActivationFunction,
   ActivationFunctionSingleArgument,
+  AFLeakyReLU,
 } from "../../types/af.js";
 
 export function parseActivationFunction(
@@ -10,6 +11,8 @@ export function parseActivationFunction(
   const parts = str.split(",");
   const method = parts[0];
   switch (method.toLowerCase()) {
+    case "linear":
+      return { method: "linear" };
     case "sigmoid":
       return { method: "sigmoid" };
     case "tanh":
@@ -17,11 +20,18 @@ export function parseActivationFunction(
     case "relu":
       return { method: "ReLU" };
     case "leakyrelu": {
-      const alpha = parts.length >= 2 ? parseFloat(parts[1]) : 0.01;
-      if (isNaN(alpha)) {
-        throw new Error(`不正なLeakyReLUパラメータ: ${parts[1]}`);
+      const f: AFLeakyReLU = {
+        method: "LeakyReLU",
+        alpha: 0.01,
+      };
+      if (parts.length >= 2) {
+        const alpha = parseFloat(parts[1]);
+        if (isNaN(alpha)) {
+          throw new Error(`不正なLeakyReLUパラメータ: ${parts[1]}`);
+        }
+        f.alpha = alpha;
       }
-      return { method: "LeakyReLU", alpha: alpha };
+      return f;
     }
     default:
       throw new Error(`未知の活性化関数: ${method}`);
@@ -35,6 +45,8 @@ export function getActivationFunctionActual(
   switch (af.method) {
     case "softmax":
       throw new Error("Softmax の実装はここでは扱いません");
+    case "linear":
+      return (x: number) => x;
     case "sigmoid":
       return (x: number) => 1 / (1 + Math.exp(-x));
     case "tanh":
@@ -55,6 +67,8 @@ export function getDerivativeActivationFunctionActual(
   switch (af.method) {
     case "softmax":
       throw new Error("Softmax の実装はここでは扱いません");
+    case "linear":
+      return (_x: number) => 1;
     case "sigmoid":
       return (x: number) => {
         const fx = 1 / (1 + Math.exp(-x));

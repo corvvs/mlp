@@ -173,6 +173,9 @@ const yargsInstance = yargs(hideBin(process.argv))
         const initialization = parseInitializationMethod(argv.initialization);
         const hiddenLayerSizes = ((arg: string) => {
           const a = arg.trim();
+          if (a.length === 0) {
+            return [];
+          }
           const m = a.match(/^(\d+)(,\d+)*$/);
           if (!m) {
             throw new Error(

@@ -41,6 +41,7 @@ export function parseOptimization(optimizationStr: string): OptimizationMethod {
       }
       return makeSGDParam(opt);
     }
+    case "msgd":
     case "momentumsgd": {
       const opt: PartialOptMomentumSGD = { method: "MomentumSGD" };
       if (parts.length >= 2) {

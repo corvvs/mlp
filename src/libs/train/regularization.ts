@@ -24,6 +24,7 @@ export function parseRegularizationMethod(
         if (isNaN(lambda) || lambda < 0) {
           throw new Error(`不正なL2正則化パラメータ: ${parts[1]}`);
         }
+        f.lambda = lambda;
       }
       return f;
     }

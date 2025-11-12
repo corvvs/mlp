@@ -48,6 +48,8 @@ function outAF(af: ActivationFunction): string {
   switch (af.method) {
     case "ReLU":
       return `ReLU`;
+    case "linear":
+      return `Linear`;
     case "sigmoid":
       return `Sigmoid`;
     case "tanh":

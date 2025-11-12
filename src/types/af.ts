@@ -3,6 +3,10 @@ export type AFSoftmax = {
   method: "softmax";
 };
 
+export type AFLinear = {
+  method: "linear";
+};
+
 export type AFSigmoid = {
   method: "sigmoid";
 };
@@ -21,6 +25,7 @@ export type AFLeakyReLU = {
 };
 
 export type ActivationFunctionSingleArgument =
+  | AFLinear
   | AFSigmoid
   | AFTanH
   | AFReLU
