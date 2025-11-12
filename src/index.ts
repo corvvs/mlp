@@ -78,7 +78,7 @@ const yargsInstance = yargs(hideBin(process.argv))
   .option("default-activation", {
     type: "string",
     description:
-      'デフォルトの活性化関数; "関数名,パラメータ..." の形式で指定; 活性化関数名は ReLU, LeakyReLU, Sigmoid, Tanh から選択',
+      'デフォルトの活性化関数; "関数名,パラメータ..." の形式で指定; 活性化関数名は ReLU, LeakyReLU, Sigmoid, Tanh, Linear から選択',
     default: "ReLU",
   })
   .option("loss", {
@@ -96,7 +96,7 @@ const yargsInstance = yargs(hideBin(process.argv))
   .option("optimization", {
     type: "string",
     description:
-      '最適化手法; "手法名,パラメータ..." の形式で指定; 手法は SGD, MomentumSGD, AdaGrad, RMSProp, Adam から選択',
+      '最適化手法; "手法名,パラメータ..." の形式で指定; 手法は SGD, MomentumSGD, AdaGrad, RMSProp, Adam, AdamW から選択',
     example: "Adam,0.001,0.9,0.999",
     default: "SGD,0.01",
   })
@@ -110,6 +110,10 @@ const yargsInstance = yargs(hideBin(process.argv))
     type: "number",
     description: "Early Stopping の patience (非負整数)",
     default: 10,
+  })
+  .option("no-plot", {
+    type: "boolean",
+    description: "訓練後にグラフをブラウザで自動的に開かない",
   })
   // predict 向けオプション
   .option("model", {
@@ -210,6 +214,7 @@ const yargsInstance = yargs(hideBin(process.argv))
           regularization,
           optimization,
           earlyStopping,
+          noPlot: argv["no-plot"] !== undefined,
         });
       } catch (err) {
         console.error("モデル訓練中にエラーが発生しました:", err);

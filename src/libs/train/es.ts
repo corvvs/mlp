@@ -5,6 +5,7 @@ import type {
 } from "../../types/es.js";
 import type { EpochMetrics } from "../../types/loss.js";
 import type { ModelData } from "../../types/model.js";
+import { deepCopy } from "../mem.js";
 
 export function parseEarlyStopping(args: {
   metric: string;
@@ -101,7 +102,7 @@ export function getEarlyStoppingActual(
 
     if (currentScore < latestGoodModel.score) {
       latestGoodModel.score = currentScore;
-      latestGoodModel.model = JSON.parse(JSON.stringify(currentModel));
+      latestGoodModel.model = deepCopy(currentModel);
       latestGoodModel.epoch = epoch;
     }
 

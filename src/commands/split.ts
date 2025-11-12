@@ -1,11 +1,7 @@
 import { sprintf } from "sprintf-js";
 import { readCSVFile, writeCSVFile } from "../libs/io.js";
 import { defaultPreprocDataFilePath } from "../constants.js";
-import {
-  splitData,
-  stratifiedSpllitData,
-  stratifiedSplitData,
-} from "../libs/split.js";
+import { stratifiedSplitData } from "../libs/split.js";
 
 export function command(props: {
   dataFilePath: string | undefined;

@@ -1,7 +1,4 @@
-import type {
-  ActivationFunctionSingleArgument,
-  ActivationFunctionSingleArgumentMethod,
-} from "../../types/af.js";
+import type { ActivationFunctionSingleArgument } from "../../types/af.js";
 import type { EarlyStopping } from "../../types/es.js";
 import type { InitializationMethod } from "../../types/initialization.js";
 import type {
@@ -15,7 +12,6 @@ import type { OptimizationMethod } from "../../types/optimization.js";
 import type { RegularizationMethod } from "../../types/regularization.js";
 import { localSrand } from "../random.js";
 import { initializeParams } from "./initialization.js";
-import { makeOptimizationParam } from "./optimization.js";
 
 export function buildModelData(props: {
   scaleFactors: (ScaleFactor | null)[];

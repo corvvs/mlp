@@ -4,7 +4,6 @@ import {
   getLoss,
   getLossFunctionActual,
   getMetrics,
-  getMetricsImprovement,
 } from "../libs/train/loss.js";
 import { getOptimizationFunctionActual } from "../libs/train/optimization.js";
 import { printModel } from "../libs/print/model.js";
@@ -19,7 +18,7 @@ import {
 } from "../libs/train/regularization.js";
 import type { ModelData } from "../types/model.js";
 import type { TrainingProgress } from "../types/data.js";
-import type { EpochMetrics, LossFunction } from "../types/loss.js";
+import type { LossFunction } from "../types/loss.js";
 import type { ActivationFunctionSingleArgument } from "../types/af.js";
 import { defaultModelFilePath } from "../constants.js";
 import { shuffleArray } from "../libs/random.js";
@@ -28,6 +27,10 @@ import type { OptimizationMethod } from "../types/optimization.js";
 import type { InitializationMethod } from "../types/initialization.js";
 import type { EarlyStopping } from "../types/es.js";
 import { getEarlyStoppingActual } from "../libs/train/es.js";
+import { generateTrainingSVG } from "../libs/svg-plot.js";
+import { openInBrowser } from "../libs/browser.js";
+import { deepCopy } from "../libs/mem.js";
+import { timeclock } from "../libs/time.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -43,6 +46,7 @@ export function command(props: {
   regularization: RegularizationMethod | null;
   optimization: OptimizationMethod;
   earlyStopping: EarlyStopping | null;
+  noPlot?: boolean;
 }) {
   console.log("[Train]");
 
@@ -99,15 +103,6 @@ export function command(props: {
   const fullSize = trainData.length;
 
   const progress: TrainingProgress[] = [];
-  let lastValMetrics: EpochMetrics = {
-    loss: Infinity,
-    accuracy: -Infinity,
-    precision: -Infinity,
-    recall: -Infinity,
-    specificity: -Infinity,
-    f1Score: -Infinity,
-  };
-  let valLossIncreaseCount = 0;
   let latestGoodModel: {
     epoch: number;
     score: number;
@@ -115,7 +110,7 @@ export function command(props: {
   } = {
     epoch: 0,
     score: Infinity,
-    model: JSON.parse(JSON.stringify(model)),
+    model: deepCopy(model),
   };
 
   console.log(
@@ -216,12 +211,6 @@ export function command(props: {
 
     const valAccuracy = valCorrects / valData.length;
 
-    const valMetricsImprovement = getMetricsImprovement(
-      lastValMetrics,
-      valMetrics
-    );
-    lastValMetrics = valMetrics;
-
     console.log(
       sprintf(
         "%5d %1.5f %1.5f %1.5f %1.5f %1.5f %1.5f %1.5f",
@@ -241,6 +230,14 @@ export function command(props: {
       valLoss,
       trainAccuracy,
       valAccuracy,
+      trainPrecision: trainMetrics.precision,
+      valPrecision: valMetrics.precision,
+      trainRecall: trainMetrics.recall,
+      valRecall: valMetrics.recall,
+      trainSpecificity: trainMetrics.specificity,
+      valSpecificity: valMetrics.specificity,
+      trainF1Score: trainMetrics.f1Score,
+      valF1Score: valMetrics.f1Score,
     });
 
     // [早期終了]
@@ -273,36 +270,28 @@ export function command(props: {
         break;
       }
     }
-
-    // const scoreToMinimize = valMetrics.loss;
-    // if (scoreToMinimize < latestGoodModel.score) {
-    //   latestGoodModel.score = scoreToMinimize;
-    //   latestGoodModel.model = JSON.parse(JSON.stringify(model));
-    //   latestGoodModel.epoch = epoch + 1;
-    // }
-    // if (valMetricsImprovement.loss > -0.00001) {
-    //   valLossIncreaseCount++;
-    //   if (
-    //     valLossIncreaseCount >= 10 ||
-    //     scoreToMinimize > 2 * latestGoodModel.score ||
-    //     latestGoodModel.epoch < epoch - 100
-    //   ) {
-    //     console.log("Stopping.");
-    //     break;
-    //   }
-    // } else {
-    //   valLossIncreaseCount = 0;
-    // }
   }
 
   // 学習終了
   console.log(
     `訓練が完了しました: Best Score: ${latestGoodModel.score} at epoch ${latestGoodModel.epoch}`
   );
-  writeJSONFile(defaultModelFilePath, {
+  const finalModel = {
     ...latestGoodModel.model,
     trainMetrics: model.trainMetrics,
     valMetrics: model.valMetrics,
-  });
-  writeGNUPlotFile("training_progress.dat", progress);
+  };
+  writeJSONFile(props.modelOutFilePath, finalModel);
+
+  if (!props.noPlot) {
+    const svgPath = "training_curves.svg";
+    try {
+      generateTrainingSVG(progress, svgPath, finalModel);
+      openInBrowser(svgPath);
+    } catch (error) {
+      console.error("グラフの生成またはブラウザ起動に失敗しました:", error);
+    }
+  } else {
+    console.log("\nグラフの自動表示がスキップされました (--no-plot)");
+  }
 }

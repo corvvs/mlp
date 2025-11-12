@@ -11,4 +11,12 @@ export type TrainingProgress = {
   valLoss: number;
   trainAccuracy: number;
   valAccuracy: number;
+  trainPrecision: number;
+  valPrecision: number;
+  trainRecall: number;
+  valRecall: number;
+  trainSpecificity: number;
+  valSpecificity: number;
+  trainF1Score: number;
+  valF1Score: number;
 };
