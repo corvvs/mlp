@@ -101,11 +101,11 @@ export function command(props: {
   const progress: TrainingProgress[] = [];
   let lastValMetrics: EpochMetrics = {
     loss: Infinity,
-    accuracy: Infinity,
-    precision: Infinity,
-    recall: Infinity,
-    specificity: Infinity,
-    f1Score: Infinity,
+    accuracy: -Infinity,
+    precision: -Infinity,
+    recall: -Infinity,
+    specificity: -Infinity,
+    f1Score: -Infinity,
   };
   let valLossIncreaseCount = 0;
   let latestGoodModel: {
@@ -115,7 +115,7 @@ export function command(props: {
   } = {
     epoch: 0,
     score: Infinity,
-    model: null,
+    model: JSON.parse(JSON.stringify(model)),
   };
 
   console.log(

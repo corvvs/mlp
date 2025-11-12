@@ -15,14 +15,17 @@ export function parseRegularizationMethod(
   const method = parts[0];
   switch (method) {
     case "L2": {
-      const lambda = parseFloat(parts[1]);
-      if (isNaN(lambda) || lambda < 0) {
-        throw new Error(`不正なL2正則化パラメータ: ${parts[1]}`);
-      }
-      return {
+      const f: RegularizationMethod = {
         method: "L2",
-        lambda: lambda,
+        lambda: 0.01,
       };
+      if (parts.length >= 2) {
+        const lambda = parseFloat(parts[1]);
+        if (isNaN(lambda) || lambda < 0) {
+          throw new Error(`不正なL2正則化パラメータ: ${parts[1]}`);
+        }
+      }
+      return f;
     }
     default:
       throw new Error(`未知の正則化方式: ${method}`);

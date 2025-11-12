@@ -18,7 +18,7 @@ let z1: number;
 export function normalRandom(mean: number, stddev: number): number {
   // Box-Muller法
   if (normalState === 0) {
-    const u1 = localRandom();
+    const u1 = Math.max(localRandom(), 1e-10); // log(0)防止
     const u2 = localRandom();
     z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
     z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);

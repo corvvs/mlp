@@ -88,9 +88,6 @@ export function backwardPass(props: {
     dMat.map((dVec, l) => {
       // 重みの誤差行列
       let dWMat = mulTMatMat([dVec], [aMatPrev[l]]);
-      if (actualRegularizationGradientFunction) {
-        addMatX(dWMat, actualRegularizationGradientFunction(w));
-      }
 
       const dBMat = dVec;
       for (let i = 0; i < currLayer.size; i++) {
@@ -104,10 +101,14 @@ export function backwardPass(props: {
     });
 
     for (let i = 0; i < currLayer.size; i++) {
+      const dWi = dW[i];
       for (let j = 0; j < prevLayer.size; j++) {
-        dW[i][j] /= B;
+        dWi[j] /= B;
       }
       dB[i] /= B;
+    }
+    if (actualRegularizationGradientFunction) {
+      addMatX(dW, actualRegularizationGradientFunction(w));
     }
 
     const b = model.parameters[k - 1].biases;
@@ -120,8 +121,8 @@ export function backwardPass(props: {
     const maxNorm = 5.0; // 閾値
     if (gradientNorm > maxNorm) {
       const scale = maxNorm / gradientNorm;
-      dW = dW.map((row) => row.map((x) => x * scale));
-      dB = dB.map((x) => x * scale);
+      dW.forEach((row) => row.forEach((x, j) => (row[j] = x * scale)));
+      dB.forEach((x, i) => (dB[i] = x * scale));
     }
 
     actualOptimizationFunction(w, b, dW, dB, k - 1);
