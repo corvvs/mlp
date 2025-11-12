@@ -285,12 +285,8 @@ export function command(props: {
 
   if (!props.noPlot) {
     const svgPath = "training_curves.svg";
-    try {
-      generateTrainingSVG(progress, svgPath, finalModel);
-      openInBrowser(svgPath);
-    } catch (error) {
-      console.error("グラフの生成またはブラウザ起動に失敗しました:", error);
-    }
+    generateTrainingSVG(progress, svgPath, finalModel);
+    openInBrowser(svgPath);
   } else {
     console.log("\nグラフの自動表示がスキップされました (--no-plot)");
   }

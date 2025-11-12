@@ -122,6 +122,26 @@ const yargsInstance = yargs(hideBin(process.argv))
     default: defaultModelFilePath,
     requiresArg: false,
   })
+  // multiplot 向けオプション
+  .option("models", {
+    type: "string",
+    description: "モデルファイルのパス（カンマ区切り）",
+    requiresArg: true,
+  })
+  .option("metrics", {
+    type: "string",
+    description:
+      "表示するメトリクス（カンマ区切り）: loss, accuracy, precision, recall, specificity, f1score",
+    default: "loss,accuracy",
+    requiresArg: false,
+  })
+  .option("output", {
+    type: "string",
+    description: "出力SVGファイルのパス",
+    default: "multiplot.svg",
+    requiresArg: false,
+  })
+  // コマンド定義
   .command(
     "help",
     "Show help message",
@@ -235,6 +255,36 @@ const yargsInstance = yargs(hideBin(process.argv))
         });
       } catch (err) {
         console.error("予測中にエラーが発生しました:", err);
+        process.exit(1);
+      }
+    }
+  )
+  .command(
+    "multiplot",
+    "複数モデルの検証メトリクスを比較するSVGを生成します",
+    () => {},
+    async (argv) => {
+      const { command } = await import("./commands/multiplot.js");
+      try {
+        if (!argv.models) {
+          throw new Error(
+            "--models オプションでモデルファイルのパスを指定してください（カンマ区切り）"
+          );
+        }
+        const modelFilePaths = argv.models
+          .split(",")
+          .map((path) => path.trim());
+        const metrics = argv.metrics
+          .split(",")
+          .map((metric: string) => metric.trim());
+        command({
+          modelFilePaths,
+          outputFilePath: argv.output,
+          noPlot: argv["no-plot"] !== undefined,
+          metrics,
+        });
+      } catch (err) {
+        console.error("マルチプロット生成中にエラーが発生しました:", err);
         process.exit(1);
       }
     }
