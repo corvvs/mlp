@@ -9,7 +9,7 @@ import {
 } from "../arithmetics.js";
 import { getDerivativeActivationFunctionActual } from "./af.js";
 import { getDerivativeLossFunctionActual } from "./loss.js";
-import type { OpzimizationFunction } from "./optimization.js";
+import type { OptimizationFunction } from "./optimization.js";
 
 export function backwardPass(props: {
   answer: number[];
@@ -17,7 +17,7 @@ export function backwardPass(props: {
   B: number;
   aMats: number[][][];
   zMats: number[][][];
-  actualOptimizationFunction: OpzimizationFunction;
+  actualOptimizationFunction: OptimizationFunction;
   actualRegularizationGradientFunction: RegularizationGradientFunction | null;
 }) {
   const {

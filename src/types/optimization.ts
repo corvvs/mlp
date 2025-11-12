@@ -31,12 +31,22 @@ export type OptAdam = {
   eps: number;
 };
 
+export type OptAdamW = {
+  method: "AdamW";
+  beta1: number;
+  beta2: number;
+  learningRate: number;
+  eps: number;
+  weightDecay: number;
+};
+
 export type OptimizationMethod =
   | OptSGD
   | OptMomentumSGD
   | OptAdaGrad
   | OptRMSProp
-  | OptAdam;
+  | OptAdam
+  | OptAdamW;
 
 export type PartialOptSGD = Pick<OptSGD, "method"> &
   Partial<Omit<OptSGD, "method">>;
@@ -48,10 +58,13 @@ export type PartialOptRMSProp = Pick<OptRMSProp, "method"> &
   Partial<Omit<OptRMSProp, "method">>;
 export type PartialOptAdam = Pick<OptAdam, "method"> &
   Partial<Omit<OptAdam, "method">>;
+export type PartialOptAdamW = Pick<OptAdamW, "method"> &
+  Partial<Omit<OptAdamW, "method">>;
 
 export type OptimizationMethodParam =
   | PartialOptSGD
   | PartialOptMomentumSGD
   | PartialOptAdaGrad
   | PartialOptRMSProp
-  | PartialOptAdam;
+  | PartialOptAdam
+  | PartialOptAdamW;

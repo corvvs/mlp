@@ -93,6 +93,8 @@ function outOptimizationMethod(method: OptimizationMethod): string {
       return `RMSProp (lr=${method.learningRate}, rho=${method.rho}, eps=${method.eps})`;
     case "Adam":
       return `Adam (lr=${method.learningRate}, beta1=${method.beta1}, beta2=${method.beta2}, eps=${method.eps})`;
+    case "AdamW":
+      return `AdamW (lr=${method.learningRate}, beta1=${method.beta1}, beta2=${method.beta2}, eps=${method.eps}, weightDecay=${method.weightDecay})`;
     default:
       throw new Error(`未知の最適化方法: ${method}`);
   }

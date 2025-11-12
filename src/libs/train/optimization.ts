@@ -2,6 +2,7 @@ import type { LayerInfo } from "../../types/layer.js";
 import type {
   OptAdaGrad,
   OptAdam,
+  OptAdamW,
   OptimizationMethod,
   OptimizationMethodParam,
   OptMomentumSGD,
@@ -9,6 +10,7 @@ import type {
   OptSGD,
   PartialOptAdaGrad,
   PartialOptAdam,
+  PartialOptAdamW,
   PartialOptMomentumSGD,
   PartialOptRMSProp,
   PartialOptSGD,
@@ -132,12 +134,51 @@ export function parseOptimization(optimizationStr: string): OptimizationMethod {
       }
       return makeAdamParam(opt);
     }
+    case "adamw": {
+      const opt: PartialOptAdamW = { method: "AdamW" };
+      if (parts.length >= 2) {
+        const weightDecay = parseFloat(parts[1]);
+        if (isNaN(weightDecay) || weightDecay < 0) {
+          throw new Error(`不正なAdamW Weight Decay値: ${parts[1]}`);
+        }
+        opt.weightDecay = weightDecay;
+      }
+      if (parts.length >= 3) {
+        const learningRate = parseFloat(parts[2]);
+        if (isNaN(learningRate) || learningRate <= 0) {
+          throw new Error(`不正なAdamW学習率: ${parts[2]}`);
+        }
+        opt.learningRate = learningRate;
+      }
+      if (parts.length >= 4) {
+        const beta1 = parseFloat(parts[3]);
+        if (isNaN(beta1) || beta1 < 0 || beta1 >= 1) {
+          throw new Error(`不正なAdamWβ1値: ${parts[3]}`);
+        }
+        opt.beta1 = beta1;
+      }
+      if (parts.length >= 5) {
+        const beta2 = parseFloat(parts[4]);
+        if (isNaN(beta2) || beta2 < 0 || beta2 >= 1) {
+          throw new Error(`不正なAdamWβ2値: ${parts[4]}`);
+        }
+        opt.beta2 = beta2;
+      }
+      if (parts.length >= 6) {
+        const eps = parseFloat(parts[5]);
+        if (isNaN(eps) || eps <= 0) {
+          throw new Error(`不正なAdamWイプシロン値: ${parts[5]}`);
+        }
+        opt.eps = eps;
+      }
+      return makeAdamWParam(opt);
+    }
     default:
       throw new Error(`未知の最適化方法: ${method}`);
   }
 }
 
-export type OpzimizationFunction = (
+export type OptimizationFunction = (
   W: number[][],
   b: number[],
   dW: number[][],
@@ -189,6 +230,17 @@ function makeAdamParam(optimization: PartialOptAdam): OptAdam {
   };
 }
 
+function makeAdamWParam(optimization: PartialOptAdamW): OptAdamW {
+  return {
+    ...optimization,
+    beta1: optimization.beta1 ?? 0.9,
+    beta2: optimization.beta2 ?? 0.999,
+    learningRate: optimization.learningRate ?? 0.001,
+    eps: optimization.eps ?? 1e-8,
+    weightDecay: optimization.weightDecay ?? 1e-4,
+  };
+}
+
 export function makeOptimizationParam(
   optimization: OptimizationMethodParam
 ): OptimizationMethod {
@@ -203,12 +255,14 @@ export function makeOptimizationParam(
       return makeRMSPropParam(optimization);
     case "Adam":
       return makeAdamParam(optimization);
+    case "AdamW":
+      return makeAdamWParam(optimization);
     default:
       throw new Error(`未知の最適化方法: ${optimization}`);
   }
 }
 
-function getActualSGD(optimization: OptSGD): OpzimizationFunction {
+function getActualSGD(optimization: OptSGD): OptimizationFunction {
   const learningRate = optimization.learningRate;
   return (
     W: number[][],
@@ -226,7 +280,7 @@ function getActualSGD(optimization: OptSGD): OpzimizationFunction {
 function getActualMomentumSGD(
   optimization: OptMomentumSGD,
   layers: LayerInfo[]
-): OpzimizationFunction {
+): OptimizationFunction {
   const learningRate = optimization.learningRate;
   const alpha = optimization.alpha;
 
@@ -261,7 +315,7 @@ function getActualMomentumSGD(
 function getActualAdaGrad(
   optimization: OptAdaGrad,
   layers: LayerInfo[]
-): OpzimizationFunction {
+): OptimizationFunction {
   const learningRate = optimization.learningRate;
   const eps = optimization.eps;
 
@@ -305,7 +359,7 @@ function getActualAdaGrad(
 export function getActualRMSProp(
   optimization: OptRMSProp,
   layers: LayerInfo[]
-): OpzimizationFunction {
+): OptimizationFunction {
   const rho = optimization.rho;
   const learningRate = optimization.learningRate;
   const eps = optimization.eps;
@@ -340,7 +394,7 @@ export function getActualRMSProp(
 export function getActualAdam(
   optimization: OptAdam,
   layers: LayerInfo[]
-): OpzimizationFunction {
+): OptimizationFunction {
   const mws = Array.from({ length: layers.length - 1 }, (_, k) =>
     zeroMat(layers[k + 1].size, layers[k].size)
   );
@@ -389,10 +443,69 @@ export function getActualAdam(
   };
 }
 
+export function getActualAdamW(
+  optimization: OptAdamW,
+  layers: LayerInfo[]
+): OptimizationFunction {
+  const mws = Array.from({ length: layers.length - 1 }, (_, k) =>
+    zeroMat(layers[k + 1].size, layers[k].size)
+  );
+  const vws = Array.from({ length: layers.length - 1 }, (_, k) =>
+    zeroMat(layers[k + 1].size, layers[k].size)
+  );
+  const mbs = Array.from({ length: layers.length - 1 }, (_, k) =>
+    zeroVec(layers[k + 1].size)
+  );
+  const vbs = Array.from({ length: layers.length - 1 }, (_, k) =>
+    zeroVec(layers[k + 1].size)
+  );
+  const ts = zeroVec(layers.length - 1);
+  const beta1 = optimization.beta1;
+  const beta2 = optimization.beta2;
+  const learningRate = optimization.learningRate;
+  const eps = optimization.eps;
+  const weightDecay = optimization.weightDecay;
+
+  return (
+    W: number[][],
+    b: number[],
+    dW: number[][],
+    db: number[],
+    k: number
+  ) => {
+    const mw = mws[k];
+    const vw = vws[k];
+    const mb = mbs[k];
+    const vb = vbs[k];
+    ts[k] += 1;
+    const t = ts[k];
+    for (let i = 0; i < W.length; i++) {
+      const Wi = W[i];
+      const dWi = dW[i];
+      const mwi = mw[i];
+      const vwi = vw[i];
+      for (let j = 0; j < W[0].length; j++) {
+        mwi[j] = beta1 * mwi[j] + (1 - beta1) * dWi[j];
+        vwi[j] = beta2 * vwi[j] + (1 - beta2) * dWi[j] * dWi[j];
+        const mwhat = mwi[j] / (1 - Math.pow(beta1, t));
+        const vwhat = vwi[j] / (1 - Math.pow(beta2, t));
+        Wi[j] -=
+          (learningRate * mwhat) / (Math.sqrt(vwhat) + eps) +
+          learningRate * weightDecay * Wi[j];
+      }
+      mb[i] = beta1 * mb[i] + (1 - beta1) * db[i];
+      vb[i] = beta2 * vb[i] + (1 - beta2) * db[i] * db[i];
+      const mbhat = mb[i] / (1 - Math.pow(beta1, t));
+      const vbhat = vb[i] / (1 - Math.pow(beta2, t));
+      b[i] -= (learningRate * mbhat) / (Math.sqrt(vbhat) + eps);
+    }
+  };
+}
+
 export function getOptimizationFunctionActual(
   optimization: OptimizationMethod,
   layers: LayerInfo[]
-): OpzimizationFunction {
+): OptimizationFunction {
   switch (optimization.method) {
     case "SGD":
       return getActualSGD(optimization);
@@ -404,6 +517,8 @@ export function getOptimizationFunctionActual(
       return getActualRMSProp(optimization, layers);
     case "Adam":
       return getActualAdam(optimization, layers);
+    case "AdamW":
+      return getActualAdamW(optimization, layers);
     default:
       throw new Error(`未知の最適化方法: ${optimization}`);
   }
