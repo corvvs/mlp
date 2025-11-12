@@ -1,6 +1,7 @@
 import { writeFileSync } from "fs";
 import type { TrainingProgress } from "../types/data.js";
 import type { ModelData } from "../types/model.js";
+import { basename } from "path";
 
 interface PlotConfig {
   width: number;
@@ -34,6 +35,23 @@ export function generateTrainingSVG(
 
   // 2つのグラフ（Loss と Accuracy）を横並びで生成
   const svg = createDualPlotSVG(progress, modelInfo);
+  writeFileSync(outputPath, svg, "utf-8");
+  console.log(`SVGグラフを生成しました: ${outputPath}`);
+}
+
+/**
+ * 複数モデルの検証メトリクスを比較するSVGを生成する
+ */
+export function generateMultiModelSVG(
+  models: Array<{ path: string; data: ModelData }>,
+  outputPath: string,
+  metrics: string[] = ["loss", "accuracy"]
+): void {
+  if (models.length === 0) {
+    throw new Error("モデルデータが空です");
+  }
+
+  const svg = createMultiModelPlotSVG(models, metrics);
   writeFileSync(outputPath, svg, "utf-8");
   console.log(`SVGグラフを生成しました: ${outputPath}`);
 }
@@ -418,6 +436,373 @@ function generateMetricsPlot(
           }" class="info-text" text-anchor="middle" fill="#E91E63" font-weight="bold">Best: ${bestEpoch}</text>`
         : ""
     }
+    
+    <!-- Legend -->
+    ${legendItems}
+  `;
+}
+
+/**
+ * 複数モデルの検証メトリクスを比較するSVGを生成
+ */
+function createMultiModelPlotSVG(
+  models: Array<{ path: string; data: ModelData }>,
+  metricsToPlot: string[]
+): string {
+  const totalWidth = 1000;
+  const plotHeight = 400;
+  const plotMargin = 20;
+  const headerHeight = 70;
+  const totalHeight =
+    headerHeight + metricsToPlot.length * (plotHeight + plotMargin);
+
+  // メトリクス情報のマッピング
+  const metricConfigs: Record<
+    string,
+    {
+      title: string;
+      yAxisName: string;
+      extractor: (metrics: any) => number[];
+      useLogScale: boolean;
+    }
+  > = {
+    loss: {
+      title: "Validation Loss",
+      yAxisName: "Loss",
+      extractor: (data) => data.valLoss,
+      useLogScale: true,
+    },
+    accuracy: {
+      title: "Validation Accuracy",
+      yAxisName: "Accuracy",
+      extractor: (data) => data.valAccuracy,
+      useLogScale: false,
+    },
+    precision: {
+      title: "Validation Precision",
+      yAxisName: "Precision",
+      extractor: (data) => data.valPrecision,
+      useLogScale: false,
+    },
+    recall: {
+      title: "Validation Recall",
+      yAxisName: "Recall",
+      extractor: (data) => data.valRecall,
+      useLogScale: false,
+    },
+    specificity: {
+      title: "Validation Specificity",
+      yAxisName: "Specificity",
+      extractor: (data) => data.valSpecificity,
+      useLogScale: false,
+    },
+    f1score: {
+      title: "Validation F1-Score",
+      yAxisName: "F1-Score",
+      extractor: (data) => data.valF1Score,
+      useLogScale: false,
+    },
+  };
+
+  // 各モデルの検証メトリクスを抽出
+  const modelsData = models.map((model, index) => {
+    const epochs = model.data.valMetrics.map((_, i) => i + 1);
+    const bestEpoch = model.data.bestEpoch;
+    const modelName = basename(model.path, ".json");
+
+    return {
+      modelName,
+      valLoss: model.data.valMetrics.map((m) => m.loss),
+      valAccuracy: model.data.valMetrics.map((m) => m.accuracy),
+      valPrecision: model.data.valMetrics.map((m) => m.precision),
+      valRecall: model.data.valMetrics.map((m) => m.recall),
+      valSpecificity: model.data.valMetrics.map((m) => m.specificity),
+      valF1Score: model.data.valMetrics.map((m) => m.f1Score),
+      epochs,
+      bestEpoch,
+      index,
+    };
+  });
+
+  // 色のパレット（各モデルに異なる色を割り当て）
+  const colors = [
+    "#2196F3",
+    "#FF9800",
+    "#4CAF50",
+    "#9C27B0",
+    "#F44336",
+    "#00BCD4",
+    "#FFEB3B",
+    "#E91E63",
+    "#3F51B5",
+    "#8BC34A",
+  ];
+
+  // 各メトリクスのプロットを生成
+  const plots = metricsToPlot.map((metric, index) => {
+    const config = metricConfigs[metric];
+    if (!config) {
+      throw new Error(`未知のメトリクス: ${metric}`);
+    }
+
+    const plot = createMultiModelMetricsPlot(
+      modelsData,
+      config.title,
+      config.yAxisName,
+      defaultConfig,
+      config.extractor,
+      colors,
+      config.useLogScale
+    );
+
+    const yOffset = headerHeight + index * (plotHeight + plotMargin);
+    return `<g transform="translate(100, ${yOffset})">
+    ${plot}
+  </g>`;
+  });
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">
+  <defs>
+    <style>
+      .plot-title { font: bold 18px sans-serif; fill: #333; }
+      .axis-label { font: 14px sans-serif; fill: #666; }
+      .tick-label { font: 12px sans-serif; fill: #999; }
+      .grid-line { stroke: #e0e0e0; stroke-width: 1; }
+      .axis-line { stroke: #333; stroke-width: 2; fill: none; }
+      .legend-text { font: 12px sans-serif; fill: #333; }
+      .info-text { font: 12px sans-serif; fill: #666; }
+      .best-epoch-marker { fill: white; stroke-width: 2; }
+    </style>
+  </defs>
+  
+  <!-- タイトル -->
+  <text x="${
+    totalWidth / 2
+  }" y="25" class="plot-title" text-anchor="middle">Multi-Model Comparison</text>
+  
+  <!-- Plots -->
+  ${plots.join("\n  ")}
+</svg>`;
+}
+
+/**
+ * 複数モデルの単一メトリクスを比較するプロットを生成
+ */
+function createMultiModelMetricsPlot(
+  modelsData: Array<{
+    modelName: string;
+    valLoss: number[];
+    valAccuracy: number[];
+    valPrecision: number[];
+    valRecall: number[];
+    valSpecificity: number[];
+    valF1Score: number[];
+    epochs: number[];
+    bestEpoch: number;
+    index: number;
+  }>,
+  title: string,
+  yAxisName: string,
+  config: PlotConfig,
+  valueExtractor: (data: {
+    modelName: string;
+    valLoss: number[];
+    valAccuracy: number[];
+    valPrecision: number[];
+    valRecall: number[];
+    valSpecificity: number[];
+    valF1Score: number[];
+    epochs: number[];
+    bestEpoch: number;
+    index: number;
+  }) => number[],
+  colors: string[],
+  useLogScale: boolean
+): string {
+  const { width, height, marginTop, marginRight, marginBottom, marginLeft } =
+    config;
+
+  const plotWidth = width - marginLeft - marginRight;
+  const plotHeight = height - marginTop - marginBottom;
+
+  // 全モデルの最大epoch数を取得
+  const maxEpoch = Math.max(...modelsData.map((d) => Math.max(...d.epochs)));
+
+  // 全モデルの全データポイントから最小・最大を取得
+  const allValues: number[] = [];
+  modelsData.forEach((modelData) => {
+    const values = valueExtractor(modelData);
+    allValues.push(...values);
+  });
+
+  const yMin = Math.min(...allValues);
+  const yMax = Math.max(...allValues);
+
+  // スケール計算
+  const xMin = 1;
+  const xMax = maxEpoch;
+
+  const scaleX = (x: number) =>
+    marginLeft + ((x - xMin) / (xMax - xMin)) * plotWidth;
+
+  let scaleY: (y: number) => number;
+  let yMinPadded: number;
+  let yMaxPadded: number;
+
+  if (useLogScale) {
+    // 対数スケール
+    const logYMin = Math.log10(Math.max(yMin, 1e-10));
+    const logYMax = Math.log10(Math.max(yMax, 1e-10));
+    const logPadding = (logYMax - logYMin) * 0.1;
+    const logYMinPadded = logYMin - logPadding;
+    const logYMaxPadded = logYMax + logPadding;
+
+    yMinPadded = Math.pow(10, logYMinPadded);
+    yMaxPadded = Math.pow(10, logYMaxPadded);
+
+    scaleY = (y: number) => {
+      const logY = Math.log10(Math.max(y, 1e-10));
+      return (
+        marginTop +
+        plotHeight -
+        ((logY - logYMinPadded) / (logYMaxPadded - logYMinPadded)) * plotHeight
+      );
+    };
+  } else {
+    // 線形スケール
+    const yPadding = (yMax - yMin) * 0.1;
+    yMinPadded = Math.max(0, yMin - yPadding);
+    yMaxPadded = yMax + yPadding;
+
+    scaleY = (y: number) =>
+      marginTop +
+      plotHeight -
+      ((y - yMinPadded) / (yMaxPadded - yMinPadded)) * plotHeight;
+  }
+
+  // 各モデルのパスと最良エポックマーカーを生成
+  const modelPaths: string[] = [];
+  const bestEpochMarkers: string[] = [];
+
+  modelsData.forEach((modelData) => {
+    const values = valueExtractor(modelData);
+    const color = colors[modelData.index % colors.length];
+
+    // パス生成
+    const path = modelData.epochs
+      .map((epoch, i) => {
+        const x = scaleX(epoch);
+        const y = scaleY(values[i]);
+        return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`;
+      })
+      .join(" ");
+
+    modelPaths.push(
+      `<path d="${path}" stroke="${color}" stroke-width="2" fill="none"/>`
+    );
+
+    // 最良エポックのマーカー（丸）を追加
+    const bestEpochIndex = modelData.bestEpoch - 1;
+    if (bestEpochIndex >= 0 && bestEpochIndex < values.length) {
+      const x = scaleX(modelData.bestEpoch);
+      const y = scaleY(values[bestEpochIndex]);
+      bestEpochMarkers.push(
+        `<circle cx="${x}" cy="${y}" r="4" class="best-epoch-marker" stroke="${color}"/>`
+      );
+    }
+  });
+
+  // X軸の目盛り
+  const xTicks = generateTicks(xMin, xMax, 5);
+  const xAxisLabels = xTicks
+    .map((tick) => {
+      const x = scaleX(tick);
+      return `<text x="${x}" y="${
+        marginTop + plotHeight + 35
+      }" class="tick-label" text-anchor="middle">${Math.round(tick)}</text>`;
+    })
+    .join("\n    ");
+
+  // Y軸の目盛りとグリッド
+  const yTicks = generateTicks(yMinPadded, yMaxPadded, 5);
+  const gridLines = yTicks
+    .map((tick) => {
+      const y = scaleY(tick);
+      return `<line x1="${marginLeft}" y1="${y}" x2="${
+        marginLeft + plotWidth
+      }" y2="${y}" class="grid-line"/>`;
+    })
+    .join("\n    ");
+
+  const yAxisLabels = yTicks
+    .map((tick) => {
+      const y = scaleY(tick);
+      return `<text x="${marginLeft - 10}" y="${
+        y + 4
+      }" class="tick-label" text-anchor="end">${tick.toFixed(3)}</text>`;
+    })
+    .join("\n    ");
+
+  // 凡例の生成
+  const legendItems = modelsData
+    .map((modelData, i) => {
+      const color = colors[modelData.index % colors.length];
+      const y = marginTop + 20 + i * 20;
+      return `
+    <line x1="${marginLeft + plotWidth + 20}" y1="${y}" x2="${
+        marginLeft + plotWidth + 60
+      }" y2="${y}" stroke="${color}" stroke-width="2"/>
+    <circle cx="${
+      marginLeft + plotWidth + 70
+    }" cy="${y}" r="3" class="best-epoch-marker" stroke="${color}"/>
+    <text x="${marginLeft + plotWidth + 80}" y="${y + 5}" class="legend-text">${
+        modelData.modelName
+      }</text>`;
+    })
+    .join("\n");
+
+  return `
+    <!-- Plot Area -->
+    <rect x="${marginLeft}" y="${marginTop}" width="${plotWidth}" height="${plotHeight}" fill="white" stroke="#ddd"/>
+    
+    <!-- Grid Lines -->
+    ${gridLines}
+    
+    <!-- Axes -->
+    <line x1="${marginLeft}" y1="${marginTop}" x2="${marginLeft}" y2="${
+    marginTop + plotHeight
+  }" class="axis-line"/>
+    <line x1="${marginLeft}" y1="${marginTop + plotHeight}" x2="${
+    marginLeft + plotWidth
+  }" y2="${marginTop + plotHeight}" class="axis-line"/>
+    
+    <!-- Data Lines -->
+    ${modelPaths.join("\n    ")}
+    
+    <!-- Best Epoch Markers -->
+    ${bestEpochMarkers.join("\n    ")}
+    
+    <!-- Axis Labels -->
+    <text x="${marginLeft + plotWidth / 2}" y="${
+    marginTop + plotHeight + 60
+  }" class="axis-label" text-anchor="middle">Epoch</text>
+    <text x="${marginLeft - 60}" y="${
+    marginTop + plotHeight / 2
+  }" class="axis-label" text-anchor="middle" transform="rotate(-90, ${
+    marginLeft - 60
+  }, ${marginTop + plotHeight / 2})">${yAxisName}</text>
+    
+    <!-- Y Axis Ticks -->
+    ${yAxisLabels}
+    
+    <!-- X Axis Ticks -->
+    ${xAxisLabels}
+    
+    <!-- Title -->
+    <text x="${marginLeft + plotWidth / 2}" y="${
+    marginTop - 10
+  }" class="plot-title" text-anchor="middle">${title}</text>
     
     <!-- Legend -->
     ${legendItems}
