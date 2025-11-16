@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "run": "node dist/index.js preproc --data=data.csv"
+    "run": "node dist/index.js"
   },
   "dependencies": {
     "sprintf-js": "^1.1.3",
