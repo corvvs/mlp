@@ -1,20 +1,10 @@
-.PHONY: build clean
+.PHONY: build clean 
 
-build:
+depends:
+	npm install
+
+build: depends
 	npx tsc
-
-exec:
-# 	node dist/index.js preproc --data=data.csv
-# 	node dist/index.js split
-	node dist/index.js predict --model=trained.json
-
-run: build exec
-
-train: build
-	node dist/index.js train --seed=42 --batch-size=200
-
-predict: build
-	node dist/index.js predict --model=trained.json
 
 clean:
 	rm -rf dist
