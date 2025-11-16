@@ -1,0 +1,34 @@
+{
+  "baseOptions": {
+    "data": "titanic/qtrain.csv",
+    "epochs": 5000,
+    "seed": 42,
+    "no-plot": true,
+    "split-ratio": 0.8,
+    "optimization": "adamw"
+  },
+  "grid": {
+    "hidden-layers": [
+      "",
+      "4",
+      "4,4",
+      "8",
+      "8,8",
+      "16",
+      "16,16",
+      "32",
+      "32,32",
+      "64",
+      "64,64",
+      "128",
+      "128,128"
+    ]
+  },
+  "output": {
+    "modelPrefix": "grid_model_",
+    "multiplotFile": "grid_results.svg",
+    "metrics": ["loss", "accuracy"],
+    "metadataFile": "grid-search-results.json"
+  },
+  "maxParallel": 4
+}
