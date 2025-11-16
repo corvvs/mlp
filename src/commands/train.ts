@@ -1,5 +1,5 @@
 import { sprintf } from "sprintf-js";
-import { readCSVFile, writeGNUPlotFile, writeJSONFile } from "../libs/io.js";
+import { readCSVFile, writeJSONFile } from "../libs/io.js";
 import {
   getLoss,
   getLossFunctionActual,
@@ -20,7 +20,6 @@ import type { ModelData } from "../types/model.js";
 import type { TrainingProgress } from "../types/data.js";
 import type { LossFunction } from "../types/loss.js";
 import type { ActivationFunctionSingleArgument } from "../types/af.js";
-import { defaultModelFilePath } from "../constants.js";
 import { shuffleArray } from "../libs/random.js";
 import type { RegularizationMethod } from "../types/regularization.js";
 import type { OptimizationMethod } from "../types/optimization.js";
@@ -30,7 +29,6 @@ import { getEarlyStoppingActual } from "../libs/train/es.js";
 import { generateTrainingSVG } from "../libs/svg-plot.js";
 import { openInBrowser } from "../libs/browser.js";
 import { deepCopy } from "../libs/mem.js";
-import { timeclock } from "../libs/time.js";
 
 export function command(props: {
   dataFilePath: string;
@@ -53,6 +51,8 @@ export function command(props: {
   // データファイルの読み取り
   const dataFilePath = props.dataFilePath;
   const csvRows = readCSVFile(dataFilePath);
+
+  // データ分割 -> 学習データ / 検証データ
   const { a: trainDataRaw, b: valDataRaw } = splitData(
     csvRows,
     props.splitRatio

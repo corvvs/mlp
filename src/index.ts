@@ -141,6 +141,17 @@ const yargsInstance = yargs(hideBin(process.argv))
     default: "multiplot.svg",
     requiresArg: false,
   })
+  // grid-search 向けオプション
+  .option("config", {
+    type: "string",
+    description: "グリッドサーチ設定ファイルのパス",
+    requiresArg: true,
+  })
+  .option("max-parallel", {
+    type: "number",
+    description: "並行実行数の上限",
+    requiresArg: false,
+  })
   // コマンド定義
   .command(
     "help",
@@ -285,6 +296,30 @@ const yargsInstance = yargs(hideBin(process.argv))
         });
       } catch (err) {
         console.error("マルチプロット生成中にエラーが発生しました:", err);
+        process.exit(1);
+      }
+    }
+  )
+  .command(
+    "grid-search",
+    "グリッドサーチを実行します",
+    () => {},
+    async (argv) => {
+      const { command } = await import("./commands/grid-search.js");
+      try {
+        if (!argv.config) {
+          throw new Error(
+            "--config オプションで設定ファイルのパスを指定してください"
+          );
+        }
+        await command({
+          configFile: argv.config,
+          ...(argv.maxParallel !== undefined
+            ? { maxParallel: argv.maxParallel }
+            : {}),
+        });
+      } catch (err) {
+        console.error("グリッドサーチ中にエラーが発生しました:", err);
         process.exit(1);
       }
     }
