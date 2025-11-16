@@ -1,6 +1,6 @@
 {
   "baseOptions": {
-    "data": "titanic/qtrain.csv",
+    "data": "train_data.csv",
     "epochs": 5000,
     "seed": 42,
     "no-plot": true,
