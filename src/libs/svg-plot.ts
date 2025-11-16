@@ -148,6 +148,9 @@ function createDualPlotSVG(
     </style>
   </defs>
   
+  <!-- 背景 -->
+  <rect width="${totalWidth}" height="${totalHeight}" fill="white"/>
+  
   <!-- タイトル -->
   <text x="${
     totalWidth / 2
@@ -575,6 +578,9 @@ function createMultiModelPlotSVG(
       .best-epoch-marker { fill: white; stroke-width: 2; }
     </style>
   </defs>
+  
+  <!-- 背景 -->
+  <rect width="${totalWidth}" height="${totalHeight}" fill="white"/>
   
   <!-- タイトル -->
   <text x="${
